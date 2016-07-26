@@ -47,12 +47,22 @@ let formatNumber value = bytesVarIntOfInt value;;
 
 (*crypto*)
 
-let createTransaction (ins: int) : bytes   =
-	let nVersion = generateNVersion in 
-	let vinCount = formatNumber(ins) in 
-	let result = nVersion  @| vinCount in result;;
+(* 
+prevout_hash: 0000000000000000000000000000000000000000000000000000000000000000
+prevout_n: ffffffff
+scriptSig: 4d:04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73
+sequence: ffffffff
+*)
+
+let inputsBytes (hashed: bytes list) (inputs :int list) : bytes = bytes_of_int 4 1;;
+
+let createTransaction (ins: int)(hashes:bytes list)(inputs:int list) : bytes   =
+	let nVersion = generateNVersion in
+	let vinCount = formatNumber(List.length hashes) in 
+	let inputsSerialized = inputsBytes hashes inputs in 
+	let result = nVersion  @| vinCount @| inputsSerialized in result;;
 
 (*testing*)
 	printBytes generateNVersion;;
 	printBytes (bytesVarIntOfInt 1);;
-	printBytes(createTransaction 1);;
+	
