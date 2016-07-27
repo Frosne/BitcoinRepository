@@ -54,12 +54,32 @@ scriptSig: 4d:04ffff001d0104455468652054696d65732030332f4a616e2f3230303920436861
 sequence: ffffffff
 *)
 
-let inputsBytes (hashed: bytes list) (inputs :int list) : bytes = bytes_of_int 4 1;;
+
+
+(*for variable = start_value downto end_value do
+  expression
+done*)
+
+let scriptSignatureGeneration(ins:int)(hashed: bytes list)(inputs :int list) : bytes list = [empty_bytes];;
+let publicKey: bytes = empty_bytes;;
+
+let inputsBytes(ins:int) (hashed: bytes list) (inputs :int list) : bytes = 
+	let counter = 0 in 
+	let sequence = abytes "4294967295" in 
+	let scripts = scriptSignatureGeneration ins hashed inputs in 
+	let result = empty_bytes in 
+	let hash = 
+	while counter != ins do
+		let hash = List.nth hashed counter in
+		let input =bytesVarIntOfInt ( List.nth  inputs counter) in
+		let script = List.nth scripts counter in
+		counter = counter + 1; result = ((result @| hash) @| (input @| script))@|sequence done
+	in result;;
 
 let createTransaction (ins: int)(hashes:bytes list)(inputs:int list) : bytes   =
 	let nVersion = generateNVersion in
 	let vinCount = formatNumber(List.length hashes) in 
-	let inputsSerialized = inputsBytes hashes inputs in 
+	let inputsSerialized = inputsBytes ins hashes inputs in 
 	let result = nVersion  @| vinCount @| inputsSerialized in result;;
 
 (*testing*)
