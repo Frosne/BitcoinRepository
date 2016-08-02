@@ -194,8 +194,32 @@ let createTransaction (ins: int)(hashes:bytes list)(inputs:int64 list)(outs: int
 	let nLockTime = generateNLockTime in 		
 	let result = nVersion  @| vinCount @| inputsSerialized  @| voutCount @| outputsSerialized @| nLockTime in result;;
 
+let takeLeft (b: bytes) i = 
+	let splitted = split b i in
+		let part = fst splitted in part;;
+
+let takeRight(b:bytes) i = 
+	let splitted = split b i in
+		let part = snd splitted in part;;
 
 
+let parseTransaction (transaction:bytes)  = 
+	let nVersion = takeLeft transaction 4 in 
+	let transaction = takeRight transaction 4 in
+		let num = takeLeft transaction 1 in 
+			let numint = int_of_bytes num in
+				let length = 
+					if numint = 253 (*fd*) then 2
+					else if numint = 254 then 4 
+					else if numint = 255 then 8
+					else  0
+				in 
+					let vin = numint @| takeLeft (transaction (length +1 )) in 
+						let vinint = intOfBytesVarInput vin in vinint;;
+		
+				
+
+	
 
 (*testing*)
 	(*printBytes generateNVersion;;
@@ -207,6 +231,9 @@ let createTransaction (ins: int)(hashes:bytes list)(inputs:int64 list)(outs: int
 	let prevhash = [bytes_of_int 32 0];;	
 	let prevAddress = [4294967295L];;
 	let values = [5000000000L];;
-	printBytes(createTransaction ins prevhash prevAddress outputs values [empty_bytes]);;
+	let transaction = createTransaction ins prevhash prevAddress outputs values [empty_bytes];;
+
+	let test1 = parseTransaction transaction;;
+	print_int test1;;
 
 	
