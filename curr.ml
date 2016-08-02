@@ -12,6 +12,15 @@ open Platform.Option;;
 (* printing*)
 let printBytes bytes= print_string(print_bytes bytes);;
 
+
+
+type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSig: bytes; sequence: bytes}
+
+type transactionOutputType = {value: bytes; pkScript: bytes}
+
+type transactionType = {nVersion:bytes; inputcount : bytes; inputs : transactionInputType list; outputcount: bytes; outputs: transactionOutputType list;}
+
+
 (*number representation*)
 let bytes_of_long_big_endian nb (i:int64) =
     let rec put_bytes bb lb n =
@@ -59,10 +68,10 @@ let bytes_of_long nb (i:int64) =
 		else if el >='0' && el <='9' then
 			begin
 			let code = Char.code el in 
-			let one = Char.code '1' in 
+			let one = Char.code '0' in 
 		code - one
 		end
-		else failwith "Parsing failed"
+		else 0
  in result;;
 
 
@@ -74,45 +83,26 @@ let fucn =
   count :=!count +1
   done;;
 *)
-	let rec stringToCharList(line: string) = 
-	let arr : (char list) = [] in
-	let count = ref 0 in 
-	while !count != (String.length line -1) do
-	print_int !count;
-	count :=!count +1; 
-	List.append arr ['a'] done in arr;;
-	
-		
 
-	let rec stringParse (line:string)= 
-	 match line with
-       	[] -> empty_bytes 
-	|hd::hd1::lst -> 
-		begin
-		let first =  stringCastOneElement hd in
-		let second = stringCastOneElement hd1 in
-		let result = first * 16 + second in
-		let bytes = bytes_of_int 1 result in bytes @| stringParse lst
-		end 
-	| _::[] -> empty_bytes;;
-
-	
-	printBytes (stringParse "1f1f");;
-	
+	let stringParse (line:string) = 
+	let bytes = ref empty_bytes in 
+	let count = ref (String.length line -1) in 
+	while !count >= 0 do
+		let result = 
+			if !count = 0 then 
+				let result = stringCastOneElement(line.[!count]) in result
+			else 
+				let first = stringCastOneElement (line.[!count]) in 
+				let second = stringCastOneElement (line.[!count -1]) in 
+				let result  = second * 16 + first in result 
+		in
+		count :=!count -2;  bytes :=  (bytes_of_int 1 result) @| !bytes done; !bytes;;
 		
 		
-	(*let abytes16 (ba:cbytes) = 
-	match ba with *)
-	
-		let aaaa = bytes_of_int 1 31;;
-		let bbbb = bytes_of_int 1 31;;
-		printBytes (aaaa@| bbbb);;
-
-
 (* number representation*)
 
 (*main functions*)
-let generateNVersion = bytes_of_int 4 1;;
+let generateNVersion = bytes_of_int 4 16777216;;
 let generateNLockTime = bytes_of_int 4 0;;
 
 let compareStrings s1 s2 : bool = 
@@ -163,37 +153,37 @@ done*)
 let scriptSignatureGeneration(ins:int)(hashed: bytes list)(inputs :int64 list) : bytes list = [empty_bytes];;
 let publicKey: bytes = empty_bytes;;
 
-let inputsBytes(ins:int) (hashed: bytes list) (inputs :int64 list) : bytes = 
-	let counter = 0 in 
-	let sequence = abytes "4294967295" in 
-	let scripts = scriptSignatureGeneration ins hashed inputs in 
-	let result = empty_bytes in 
-	let hash = 
-	while counter != ins do
-		let hash = List.nth hashed counter in
-		let input =bytes_of_long_big_endian 4 ( List.nth inputs counter) in
-		let script = List.nth scripts counter in
-		counter = counter + 1; result = ((result @| hash) @| (input @| script))@|sequence done
-	in result;;
+let scriptSignatureGeneration(ins:int)(hashed: bytes list)(inputs :int64 list) : bytes list = 
+	let scriptSig =stringParse "4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73" in [scriptSig];;
 
-let scriptSignatureGeneration(ins:int)(hashed: bytes list)(inputs :int list) : bytes list = 
-	let scriptSig = "4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73" 		in [abytes scriptSig];;
+let inputsBytes(ins:int) (hashed: bytes list) (inputs :int64 list) : bytes = 
+	let counter = ref 0 in 
+	let sequence = stringParse "ffffffff" in 
+	let scripts = scriptSignatureGeneration ins hashed inputs in 
+	let result = ref empty_bytes in 
+	let hash = 
+	while !counter != ins do
+		let hash = List.nth hashed !counter in
+		let input =bytes_of_long_big_endian 4 ( List.nth inputs !counter) in
+		let script = List.nth scripts !counter in
+		counter := !counter + 1;  result := !result @| hash @| input @| script @|sequence done
+	in !result;;
+
 
 let scriptPubKey(outs: int) (publicKeys: bytes list) : bytes list = 
-	let scriptPubKey = "434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac" in 
-	[abytes scriptPubKey];;
+	let scriptPubKey =  stringParse "434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac" in [scriptPubKey];;
 
 let outputBytes(outs: int)(values : int64 list) (publicKeys: bytes list) : bytes = 
 	let scripts = scriptPubKey outs publicKeys in 
-	let result = empty_bytes in 
-	let counter = 0 in 
+	let result = ref empty_bytes in 
+	let counter = ref 0 in 
 	let hash = 
-	while counter != outs do
-		let value = List.nth values counter in 
+	while !counter != outs do
+		let value = List.nth values !counter in 
 		let valueFormatted = bytes_of_long_big_endian 8 value in 
-		let publicKey = List.nth scripts counter in 
-		counter = counter + 1; result = (result @| valueFormatted) @| publicKey done
-	in result;;
+		let publicKey = List.nth scripts !counter in 
+		counter := !counter + 1; result := !result @| valueFormatted @| publicKey done
+	in !result;;
 	
 let createTransaction (ins: int)(hashes:bytes list)(inputs:int64 list)(outs: int)(values : int64 list)(publicKeys:bytes list) : bytes   =
 	let nVersion = generateNVersion in
@@ -203,6 +193,9 @@ let createTransaction (ins: int)(hashes:bytes list)(inputs:int64 list)(outs: int
 	let outputsSerialized = outputBytes outs values publicKeys in 
 	let nLockTime = generateNLockTime in 		
 	let result = nVersion  @| vinCount @| inputsSerialized  @| voutCount @| outputsSerialized @| nLockTime in result;;
+
+
+
 
 (*testing*)
 	(*printBytes generateNVersion;;
@@ -214,14 +207,6 @@ let createTransaction (ins: int)(hashes:bytes list)(inputs:int64 list)(outs: int
 	let prevhash = [bytes_of_int 32 0];;	
 	let prevAddress = [4294967295L];;
 	let values = [5000000000L];;
-	(*printBytes(createTransaction ins prevhash prevAddress outputs values [empty_bytes]);;*)
+	printBytes(createTransaction ins prevhash prevAddress outputs values [empty_bytes]);;
 
-	(* let scriptSignatureGeneration(ins:int)(hashed: bytes list)(inputs :int list)*)
-	(*printBytes (List.nth (scriptSignatureGeneration 0 [empty_bytes] [0]) 0);;
-	print_endline "";;
-	printBytes(abytes "1a");;*)
-
-
-	
-	
 	
