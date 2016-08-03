@@ -14,11 +14,11 @@ let printBytes bytes= print_string(print_bytes bytes);;
 
 
 
-type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSig: bytes; sequence: bytes}
+type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}
 
 type transactionOutputType = {value: bytes; pkScript: bytes}
 
-type transactionType = {nVersion:bytes; inputcount : bytes; inputs : transactionInputType list; outputcount: bytes; outputs: transactionOutputType list;}
+type transactionType = {nVersion:bytes; inputcount : int; inputs : transactionInputType list; outputcount: int; outputs: transactionOutputType list;nLockTime : bytes}
 
 
 (*number representation*)
@@ -113,15 +113,15 @@ let compareStrings s1 s2 : bool =
 
 let intOfBytesVarInput (number:bytes) : int = 
 	let wholebyte = string_of_bytes number in
-		let byteInfo = (String.sub wholebyte 0 2) in 	
-			if (compareStrings "fd" byteInfo) && (number.length==3) then	
-		let number = xor 3 number (bytes_of_int 3 16580608)
-			in int_of_bytes number;
-		(*Int is too big =/*)
-		(*else if (compareStrings "fe" byteInfo) && (number.length==3) then let number = xor number (bytes_of_int 4 1090921693184)
-		in int_of_bytes number*)
-		else		
-			 int_of_bytes number;;
+		if String.length wholebyte  >= 2 then 
+			let byteInfo = (String.sub wholebyte 0 2) in 	
+				if (compareStrings "fd" byteInfo) && (number.length==3) then	
+					let number = xor 3 number (bytes_of_int 3 16580608)
+						in int_of_bytes number;
+				else		
+				 int_of_bytes number
+		else 	
+			int_of_bytes number;;
 
 let bytesVarIntOfInt (number: int) : bytes 	= 
 	if number < 253 then bytes_of_int 1 number
@@ -212,13 +212,79 @@ let parseTransaction (transaction:bytes)  =
 					if numint = 253 (*fd*) then 2
 					else if numint = 254 then 4 
 					else if numint = 255 then 8
-					else  0
-				in 
-					let vin = numint @| takeLeft (transaction (length +1 )) in 
-						let vinint = intOfBytesVarInput vin in vinint;;
+					else  0 in 
+					let vin =takeLeft transaction (length +1 ) in 
+					let vinint = intOfBytesVarInput vin in
+					let transaction = takeRight transaction (length +1) in 			
+					let transactionInput : (transactionInputType list) = []  in
+					let refTransactionInput = ref transactionInput in 
+					let counter = ref 0 in 
+					let l = ref 0 in 
+					let temp = 
+						while (!counter != vinint) do
+							let hash = takeLeft transaction 32 in 
+							let transaction = takeRight transaction 32 in 
+							let n = takeLeft transaction 4 in 
+							let transaction = takeRight transaction 4 in 
+							let scriptSigLength = takeLeft transaction 1 in
+							let scriptSigLengthInt = int_of_bytes scriptSigLength in 
+							let scriptSigLengthIntAdd = 	
+								if scriptSigLengthInt = 253 (*fd*) then 2
+								else if scriptSigLengthInt = 254 then 4 
+								else if scriptSigLengthInt = 255 then 8
+								else  0 in
+							let scriptSig = takeLeft transaction (scriptSigLengthIntAdd+1) in 
+							let transaction = takeRight transaction (scriptSigLengthIntAdd +1 ) in 
+							let seq = takeLeft transaction 4 in
+							let transaction = takeRight transaction 4 in 
+							let input = {prevout_hash = hash; index = n; scriptSigB = scriptSig; sequence = seq} 									in l := !l + 32 + 4 + 1 + scriptSigLengthInt + 4; 
+						List.append !refTransactionInput [input]; counter:=!counter+1  done
+					 in 
+					let transaction = takeRight transaction !l in 
+					(*ins*)
+		let num = takeLeft transaction 1 in 
+		let numint = int_of_bytes num in
+		let length = 
+			if numint = 253 (*fd*) then 2
+			else if numint = 254 then 4 
+			else if numint = 255 then 8
+			else  0 in 
+		let vout =takeLeft transaction (length +1 ) in 
+			let voutint = intOfBytesVarInput vout in  
+				let transaction = takeRight transaction (length +1) in 		
+				let transactionOutput : (transactionOutputType list) = []  in
+				let refTransactionOutput = ref transactionOutput in 
+				let counter = ref 0 in 
+				let l = ref 0 in 
+					let temp = 
+(* type transactionOutputType = {value: bytes; pkScript: bytes}*)
+						while (!counter != voutint) do
+							let valueCount = takeLeft transaction 8 in 	
+							let transaction = takeRight transaction 8 in 	
+							let scriptPubLength = takeLeft transaction 1 in
+							let scriptPubLengthInt = int_of_bytes scriptPubLength in 
+							let scriptPubLengthIntAdd = 	
+								if scriptPubLengthInt = 253 (*fd*) then 2
+								else if scriptPubLengthInt = 254 then 4 
+								else if scriptPubLengthInt = 255 then 8
+								else  0 in
+							(*!*)let scriptPub = takeLeft transaction (scriptPubLengthIntAdd+1) in 
+							let transaction = takeRight transaction (scriptPubLengthIntAdd +1 ) in 
+							let output = {value = valueCount; pkScript = scriptPub;} 									
+							in l := !l + 8 + 1 + scriptPubLengthInt; 
+						List.append !refTransactionOutput [output]; counter:=!counter+1  done
+					 in let transaction = takeRight transaction !l in 
+					let nLockTime = takeLeft transaction 4 in 
+	let result = {nVersion = nVersion;
+inputcount  = numint;
+inputs = transactionInput;
+outputcount = voutint;
+outputs = transactionOutput;
+nLockTime = nLockTime}
+ in result;;
 		
 				
-
+(*type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}*)
 	
 
 (*testing*)
@@ -234,6 +300,5 @@ let parseTransaction (transaction:bytes)  =
 	let transaction = createTransaction ins prevhash prevAddress outputs values [empty_bytes];;
 
 	let test1 = parseTransaction transaction;;
-	print_int test1;;
 
 	
