@@ -12,7 +12,8 @@ open Platform.Option;;
 (* printing*)
 let printBytes bytes= print_string(print_bytes bytes);;
 
-
+let rec print_stack (stack: int Stack.t) = 
+	Stack.iter print_int stack;;
 
 type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}
 
@@ -282,20 +283,50 @@ outputs = transactionOutput;
 nLockTime = nLockTime}
  in result;;
 
-let rec byteparse stack lst=
-	if (length lst > 0) then 
-		let byte = int_of_bytes (takeLeft lst 1) in 
-		let bytes = takeRight lst 1 in 
-		match lst.bl with 
-			[] -> stack
-			| hd::tl -> print_int byte; byteparse stack bytes
-	else 
-		stack;;
+let op_false stack = Stack.push empty_bytes stack;;
+let op_put stack bytes = Stack.push bytes stack;;
+(*let op_checksig stack (scriptPubKey : bytes) = 
+	let signature = Stack.pop stack in 
+	let publicKey = Stack.pop stack in *)
+	
 
-let parse lst = 
-	let stack :  bytes Stack.t = Stack.create () in byteparse stack lst;;
+let rec byteparse stack (lst:bytes)(scriptPubKey:bytes) counter lS =
+	let byte = int_of_bytes (takeLeft lst 1) in 
+	let bts = takeRight lst 1 in 
+	let listSepar :(int list) = [] in 
+	let refListSepar = ref listSepar in 
+	match lst.bl with 
+		[] -> stack
+		| hd::tl -> 
+			if byte == 118 then
+				begin byteparse stack bts scriptPubKey counter lS end
+			else if byte == 0 then
+				begin op_false stack; byteparse stack bts scriptPubKey counter lS end
+			else if byte >0 && byte <76 then
+				begin print_endline "put to stack" ; print_int byte; print_endline "bytes"; op_put stack (takeRight bts byte); let bts = takeRight bts byte in byteparse stack bts scriptPubKey counter lS end
+			else if byte == 169 then
+				begin byteparse stack bts scriptPubKey counter lS end
+			else if byte == 171 then
+				begin List.append []
+			else if byte == 172 (*ac*)then
+				begin print_endline "AC"; byteparse stack bts scriptPubKey counter lS end
+			else byteparse stack bts scriptPubKey counter lS;;
 
-let a =parse (bytes_of_int 1 10);;		
+(*pay to public key*)
+let parse_ptpk (scriptPubKey:bytes) (scriptSig:bytes) = 
+	let stack :  bytes Stack.t = Stack.create () in
+	let counter : ref int = 0 in 
+	let listSepar : (int list) = [] in
+	let listSeparRef = ref listSepar in 
+ 		stack.push scriptSig stack; byteparse stack scriptPubKey counter listSeparRef;;
+
+(*pay to public key hash*)
+let parse_ptpkh(scriptPubKey:bytes) (scriptSig:bytes) =
+	let stack : bytes Stack.t = Stack.create() in stack.push 
+
+let a =parse_ptpk (stringParse "4104283338ffd784c198147f99aed2cc16709c90b1522e3b3637b312a6f9130e0eda7081e373a96d36be319710cd5c134aaffba81ff08650d7de8af332fe4d8cde20ac")
+
+		
 (*type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}*)
 	
 
