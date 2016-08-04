@@ -270,8 +270,7 @@ let parseTransaction (transaction:bytes)  =
 								else  0 in
 							(*!*)let scriptPub = takeLeft transaction (scriptPubLengthIntAdd+1) in 
 							let transaction = takeRight transaction (scriptPubLengthIntAdd +1 ) in 
-							let output = {value = valueCount; pkScript = scriptPub;} 									
-							in l := !l + 8 + 1 + scriptPubLengthInt; 
+							let output = {value = valueCount; pkScript = scriptPub;} 									in l := !l + 8 + 1 + scriptPubLengthInt; 
 						List.append !refTransactionOutput [output]; counter:=!counter+1  done
 					 in let transaction = takeRight transaction !l in 
 					let nLockTime = takeLeft transaction 4 in 
@@ -282,8 +281,21 @@ outputcount = voutint;
 outputs = transactionOutput;
 nLockTime = nLockTime}
  in result;;
-		
-				
+
+let rec byteparse stack lst=
+	if (length lst > 0) then 
+		let byte = int_of_bytes (takeLeft lst 1) in 
+		let bytes = takeRight lst 1 in 
+		match lst.bl with 
+			[] -> stack
+			| hd::tl -> print_int byte; byteparse stack bytes
+	else 
+		stack;;
+
+let parse lst = 
+	let stack :  bytes Stack.t = Stack.create () in byteparse stack lst;;
+
+let a =parse (bytes_of_int 1 10);;		
 (*type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}*)
 	
 
@@ -301,4 +313,8 @@ nLockTime = nLockTime}
 
 	let test1 = parseTransaction transaction;;
 
+	
+	
+	
+	
 	
