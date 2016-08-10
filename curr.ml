@@ -336,6 +336,16 @@ let rec generateSubScript2 (lst:bytes) (separators: int list) (startIndex: int) 
 		let refList : bytes list ref = ref [] in 
 		generateSubScriptPrivate lst separators refList; listConcat !refList;;
 
+let sigStrModification (signature:bytes) = 
+	takeLeft signature 1;;
+
+(* inputs : transactionInputType list;*)
+(*type transactionType = {nVersion:bytes; inputcount : int; inputs : transactionInputType list; outputcount: int; outputs: transactionOutputType list;nLockTime : bytes}*)
+let txCopyPrivate (transaction : transactionType) = 
+	let newTransaction : transactionType = {nVersion = transaction.nVersion; inputcount = 0; inputs=[empty_bytes]; 
+	outputcount = transaction.outputcount; outputs = transaction = transaction.outsputs; nLockTime = transaction.nLockTime;} in newTransaction;;
+		
+
 let op_false stack = Stack.push empty_bytes stack;;
 let op_put stack bytes = Stack.push bytes stack;;
 (*let op_checksig stack (scriptPubKey : bytes) (counter: int) = 
