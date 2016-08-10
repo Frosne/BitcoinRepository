@@ -200,6 +200,8 @@ let takeLeft (b: bytes) i =
 		let part = fst splitted in part;;
 
 let takeRight(b:bytes) i = 
+	 if (length b == 1) then	empty_bytes
+else
 	let splitted = split b i in
 		let part = snd splitted in part;;
 
@@ -283,49 +285,98 @@ outputs = transactionOutput;
 nLockTime = nLockTime}
  in result;;
 
+let rec stringParsing (lst:bytes) (r:int list ref) (c: int ref)=
+	if lst != empty_bytes then
+	match lst.bl with
+	[] -> ()
+	| hd::tl -> let byte = int_of_bytes (takeLeft lst 1) in
+		
+	if byte > 0 && byte < 76 then
+		begin 
+			let bytes = takeRight lst (byte + 1) in c := !c + 1 + byte; stringParsing bytes r c end
+	else if byte == 171 
+		then begin 
+			let bytes = takeRight lst 1 in c := !c +1; r := List.append !r [!c]; stringParsing bytes r c	
+		end
+	else	
+		begin 
+			let bytes = takeRight lst 1 in  c := !c +1; stringParsing bytes r c
+		end
+	else ();;	
+
+let stringParsingMain (lst:bytes)  = 
+	let counter = ref 0 in 
+	let listSeparators : int list = [] in
+	let listSeparatorsRef = ref listSeparators in
+	let parsing = stringParsing lst listSeparatorsRef counter in !listSeparatorsRef;;
+
+let rec generateSubScript (separators : int list) (counter : int) =
+	match separators with 
+	[] -> -1
+	| hd::tl -> if counter > List.nth tl 0 && counter < hd then hd else generateSubScript tl counter;;
+
+let rec generateSubScriptPrivate (lst: bytes) (separators: int list) (refList: bytes list ref) =
+	match separators with 
+	[] -> () 
+	| hd::tl  -> 	let newByte = takeRight lst hd in 
+	let endPosition = 
+		if List.length tl = 0
+		then length lst 
+		else List.nth tl 0
+	in let result = takeLeft newByte (endPosition - hd) in List.append !refList [result]; generateSubScriptPrivate lst tl refList;;
+	
+let rec listConcat(lst: bytes list) : bytes = 
+	match lst with
+	[] -> empty_bytes
+	| hd::tl -> hd@|listConcat tl;;
+
+let rec generateSubScript2 (lst:bytes) (separators: int list) (startIndex: int) = 
+	if startIndex = -1 then lst
+	else
+		let refList : bytes list ref = ref [] in 
+		generateSubScriptPrivate lst separators refList; listConcat !refList;;
+
 let op_false stack = Stack.push empty_bytes stack;;
 let op_put stack bytes = Stack.push bytes stack;;
-(*let op_checksig stack (scriptPubKey : bytes) = 
+(*let op_checksig stack (scriptPubKey : bytes) (counter: int) = 
 	let signature = Stack.pop stack in 
 	let publicKey = Stack.pop stack in *)
-	
 
-let rec byteparse stack (lst:bytes)(scriptPubKey:bytes) counter lS =
-	let byte = int_of_bytes (takeLeft lst 1) in 
+(*let b = stringParse  "4104283338ffd784c198147f99aed2cc16709c90b1522e3b3637b312a6f9130e0eda7081e373a96d36be319710cd5c134aaffba81ff08650d7de8af332fe4d8cde20abac";;
+*)
+let rec byteparse (stack: bytes Stack.t) (lst:bytes) (scriptPubKey:bytes) (counter:int ref) (pkScriptPrev:bytes) =
+	let byte = int_of_bytes (takeLeft lst 1)  in
+	(*let counter : = !counter + 1 in *)
 	let bts = takeRight lst 1 in 
-	let listSepar :(int list) = [] in 
-	let refListSepar = ref listSepar in 
 	match lst.bl with 
 		[] -> stack
 		| hd::tl -> 
 			if byte == 118 then
-				begin byteparse stack bts scriptPubKey counter lS end
+				begin byteparse stack bts scriptPubKey counter pkScriptPrev end
 			else if byte == 0 then
-				begin op_false stack; byteparse stack bts scriptPubKey counter lS end
+				begin op_false stack; byteparse stack bts scriptPubKey counter pkScriptPrev end
 			else if byte >0 && byte <76 then
-				begin print_endline "put to stack" ; print_int byte; print_endline "bytes"; op_put stack (takeRight bts byte); let bts = takeRight bts byte in byteparse stack bts scriptPubKey counter lS end
+				begin counter:=!counter +1 ; op_put stack (takeRight bts byte); let bts = takeRight bts byte in byteparse stack bts scriptPubKey counter pkScriptPrev end
 			else if byte == 169 then
-				begin byteparse stack bts scriptPubKey counter lS end
+				begin byteparse stack bts scriptPubKey counter pkScriptPrev end
 			else if byte == 171 then
-				begin List.append []
+				begin byteparse stack bts scriptPubKey counter pkScriptPrev end
 			else if byte == 172 (*ac*)then
-				begin print_endline "AC"; byteparse stack bts scriptPubKey counter lS end
-			else byteparse stack bts scriptPubKey counter lS;;
+				begin print_endline "AC"; byteparse stack bts scriptPubKey counter pkScriptPrev end
+			else byteparse stack bts scriptPubKey counter pkScriptPrev;;
+
+let parsing_ptpk scriptPubKey scriptSig   =
+	let stack : bytes Stack.t = Stack.create () in 
+	let counter = ref 0 in byteparse stack scriptPubKey scriptPubKey counter scriptPubKey;;
 
 (*pay to public key*)
-let parse_ptpk (scriptPubKey:bytes) (scriptSig:bytes) = 
+(*let parse_ptpk (scriptPubKey:bytes) (scriptSig:bytes) = 
 	let stack :  bytes Stack.t = Stack.create () in
-	let counter : ref int = 0 in 
-	let listSepar : (int list) = [] in
-	let listSeparRef = ref listSepar in 
- 		stack.push scriptSig stack; byteparse stack scriptPubKey counter listSeparRef;;
-
-(*pay to public key hash*)
-let parse_ptpkh(scriptPubKey:bytes) (scriptSig:bytes) =
-	let stack : bytes Stack.t = Stack.create() in stack.push 
-
-let a =parse_ptpk (stringParse "4104283338ffd784c198147f99aed2cc16709c90b1522e3b3637b312a6f9130e0eda7081e373a96d36be319710cd5c134aaffba81ff08650d7de8af332fe4d8cde20ac")
-
+	let counter= ref 0 in 
+ 	Stack.push scriptSig stack; byteparse stack counter counter scriptPubKey;;
+*)
+(*let a =parse_ptpk (stringParse "4104283338ffd784c198147f99aed2cc16709c90b1522e3b3637b312a6f9130e0eda7081e373a96d36be319710cd5c134aaffba81ff08650d7de8af332fe4d8cde20ac");;
+*)
 		
 (*type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}*)
 	
