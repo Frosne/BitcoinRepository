@@ -4,7 +4,7 @@ a list of outputs
 32 bit locktime
 *)
 
-
+          
 open CoreCrypto;;
 open Platform.Bytes;;
 open Platform.Option;;
@@ -337,20 +337,51 @@ let rec generateSubScript2 (lst:bytes) (separators: int list) (startIndex: int) 
 		generateSubScriptPrivate lst separators refList; listConcat !refList;;
 
 let sigStrModification (signature:bytes) = 
-	takeLeft signature 1;;
+	takeLeft signature (length signature -2);;
 
-(* inputs : transactionInputType list;*)
-(*type transactionType = {nVersion:bytes; inputcount : int; inputs : transactionInputType list; outputcount: int; outputs: transactionOutputType list;nLockTime : bytes}*)
-let txCopyPrivate (transaction : transactionType) = 
-	let newTransaction : transactionType = {nVersion = transaction.nVersion; inputcount = 0; inputs=[empty_bytes]; 
+let getHash signature:bytes = 
+	let hashsmall = takeRight signature (length signature -2) in 
+	let hash = bytes_of_int 3 0 @| hashsmall in hash;;
+
+let inputModificationInput (inputCounter: int) (is : transactionInputType list) (refIs : transactionInputType list ref)(c:int) (toReplace:bytes)= 
+	let counter = ref 0 in 
+	while counter != inputCounter do
+		let signature = 
+		if (counter == c) then 	bytes_of_int 1 0
+		else toReplane in 
+		let trIn = List.nth is counter in 
+		let newInput = {prevout_hash = trIn.prevout_hash; index = trIn.index; scriptSigB = signature; sequence = trIn.sequence}; List.append !refIs [newInput];;
+
+
+
+let txCopyPrivate (transaction : transactionType)(c:int) (toReplace:bytes) = 
+	let trI : (transactionInputType list ref) = ref [] in
+	let input = inputModificationInput transaction.inputcount transaction.inputs trI c toReplace  in 
+	let newTransaction : transactionType = {nVersion = transaction.nVersion; inputcount = transaction.inputcount; inputs=input; 
 	outputcount = transaction.outputcount; outputs = transaction = transaction.outsputs; nLockTime = transaction.nLockTime;} in newTransaction;;
+
+let serialize (tr:transactionType) : bytes = empty_bytes;;
+
+let txCopySubScriptChanged (publicKey:bytes) (signature:bytes) (transactionNew : transactionType) (transactionOld:transactionType) (index:int) =
+	let outputs = List.nth transactionOld.outputs index in 
+	let script  = output.pkScript
+	let script = sigStrModification script in 
+	let hash = getHash script in 	
+	let transactionNewChanged = txCopyPrivate transactionNew index script in 
+	let serialized = serialize transactionNewChanged  in 
+	let serialized = serialized@| hash in 
+	let hashed = sha256 (sha256 serialized) in 
+	let verified = verify publicKey signature hashed in verified;;
+	
+	
 		
 
 let op_false stack = Stack.push empty_bytes stack;;
 let op_put stack bytes = Stack.push bytes stack;;
-(*let op_checksig stack (scriptPubKey : bytes) (counter: int) = 
+let op_checksig stack (scriptPubKey : bytes) (counter: int) (trNew:transactionType) (trOld:transactionType) (index:int) ( = 
 	let signature = Stack.pop stack in 
-	let publicKey = Stack.pop stack in *)
+	let publicKey = Stack.pop stack in 
+	txCopySubScriptChanged publicKey signature trNew trOld index;;
 
 (*let b = stringParse  "4104283338ffd784c198147f99aed2cc16709c90b1522e3b3637b312a6f9130e0eda7081e373a96d36be319710cd5c134aaffba81ff08650d7de8af332fe4d8cde20abac";;
 *)
@@ -389,6 +420,8 @@ let parsing_ptpk scriptPubKey scriptSig   =
 *)
 		
 (*type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}*)
+
+
 	
 
 (*testing*)
