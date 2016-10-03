@@ -6,6 +6,12 @@ open Cryptokit;;
 (* printing*)
 
 
+<<<<<<< HEAD
+=======
+let rec print_stack (stack: int Stack.t) = 
+	Stack.iter print_int stack;;
+
+>>>>>>> origin/master
 type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}
 
 type transactionOutputType = {value: bytes; pkScript: bytes}
@@ -15,6 +21,20 @@ type transactionType = {nVersion:bytes; inputcount : int; inputs : transactionIn
 let stringConcat s1 s2 = 
 	String.concat "" [s1;s2];;
 
+<<<<<<< HEAD
+=======
+ let print_bytes (x:bytes) : string =
+    let s = get_cbytes x in
+    let res = ref "" in
+    for i = 0 to String.length s - 1 do
+	let intR = int_of_char s.[i] in 
+	let stringIntR = Printf.sprintf "%x" intR in 
+	let stringIntR = if String.length stringIntR = 1 then stringConcat "0" stringIntR else stringIntR in 
+      res := !res ^ stringIntR;
+    done;
+    !res
+
+>>>>>>> origin/master
 let printBytes bytes= print_string(print_bytes bytes);;
 
 (*number representation*)
@@ -46,6 +66,7 @@ let bytes_of_int_big_endian nb i =
     let b = String.make nb (char_of_int 0) in
       abytes(put_bytes b nb i)
 
+<<<<<<< HEAD
 let long_of_bytes (b:bytes) : int64 = 
 	let x = ref 0L in 
       	let c = get_cbytes b in
@@ -56,6 +77,8 @@ let long_of_bytes (b:bytes) : int64 =
 
 
 
+=======
+>>>>>>> origin/master
 let bytes_of_long nb (i:int64) =
     let rec put_bytes bb lb n =
       if lb = 0 then failwith "not enough bytes"
@@ -105,6 +128,13 @@ let bytes_of_long nb (i:int64) =
 		
 (* number representation*)
 
+<<<<<<< HEAD
+=======
+(*main functions*)
+let generateNVersion = bytes_of_int 4 16777216;;
+let generateNLockTime = bytes_of_int 4 0;;
+
+>>>>>>> origin/master
 let compareStrings s1 s2 : bool = 
 	let result = (compare s1 s2) in
 		if result == 0
@@ -145,11 +175,14 @@ else
 	let splitted = split b i in
 		let part = snd splitted in part;;
 
+<<<<<<< HEAD
 let print_stack_int (stack: int Stack.t) = 
 	Stack.iter print_int stack;;
 
 let print_stack_bytes (stack: bytes Stack.t) =
 	Stack.iter printBytes stack;;
+=======
+>>>>>>> origin/master
 
 (* Main functionality *)
 
@@ -172,6 +205,7 @@ let _OpcodePush (stack: bytes Stack.t ref) (data: bytes ref) : int =
 		let dataToPut = takeLeft !data value in data:=takeRight !data value; Stack.push dataToPut !stack; 0
 	with _ -> -1;;
 
+<<<<<<< HEAD
 (* We dont change the value of data, it means that the first byte will be 76 *) 
 let _OpcodePushData1 (stack:bytes Stack.t ref) (data : bytes ref ) : int = 
 	try
@@ -244,6 +278,13 @@ let stack : bytes Stack.t = Stack.create ();;
 
 
 print_string(Int64.to_string (long_of_bytes (stringParse "ffffffff")));;
+=======
+
+let stack : bytes Stack.t = Stack.create ();;
+let b : bytes = int_;;
+
+print_int (_OpcodeZero (ref stack) (ref b));;
+>>>>>>> origin/master
 
 
 
