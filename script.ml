@@ -237,8 +237,61 @@ let _OpDup(stack:bytes Stack.t ref) (data:bytes ref) : int =
 		Stack.push value !stack; 0
 	with _-> -1;;
 
-let _OpSha256(stack:bytes Stack.t ref) (data:bytes ref) : int = 
-	
+(*Crypto *)
+let sha256 b = hash SHA256 b;;
+let sha1 b = hash SHA1 b;;
+let tohex s = transform_string (Hexa.encode()) s
+let ripOriginal (s: string) = 
+	tohex (hash_string (Hash.ripemd160()) s) ;;
+print_string (ripOriginal "abcdefghijklmnopqrstuvwxyz");;
+
+let ripemd160 (data : bytes ref) =
+	let data = ! data in 
+	let dataString = get_cbytes data in 
+	let hashed = ripOriginal dataString in 
+	stringParse hashed;;
+
+let _OpSHA256(stack:bytes Stack.t ref) (data:bytes ref) : int = 
+	try 
+		let value = Stack.pop !stack in 
+		let hashedvalue = sha256 value in 
+		Stack.push hashedvalue !stack; 0
+	with _-> -1;;
+
+let _OpRIPEMD160(stack: bytes Stack.t ref) (data: bytes ref) : int = 
+	try 
+		let value = Stack.pop !stack in 
+		let hashedvalue = ripemd160 value in 
+		Stack.push hashedvalue !stack; 0
+	with _-> -1;;
+
+let _OpSHA1(stack:bytes Stack.t) (data:bytes ref) : int = 
+	try 
+		let value = Stack.pop !stack in 
+		let hashedvalue = sha1 value in 
+		Stack.push hashedvalue !stack; 0
+	with _-> -1;;
+
+let _OpHASH160 (stack:bytes Stack.t ref) (data:bytes ref) : int = 
+	try 
+		let value = Stack.pop !stack in 
+		let hashedvalue = sha256 value in 
+		let hashedvalue = ripemd160 hashedvalue in 
+		Stack.push hashedvalue !stack; 0
+	with _-> -1;;
+
+let _OpHASH256 (stack:bytes Stack.t ref) (data:bytes ref) : int = 
+	try
+		let value = Stack.pop !stack in 
+		let hashedvalue = sha256 value in 
+		let hashedvalue = sha256 hashedvalue in 
+		Stack.push hashedvalue !stack; 0
+	with _-> -1;;
+
+let _OpCodeSep (stack:bytes Stack.t ref) (data:bytes ref) : int = 0;;
+
+		
+
 
 let stack : bytes Stack.t = Stack.create ();;
 
