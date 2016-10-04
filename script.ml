@@ -243,10 +243,8 @@ let sha1 b = hash SHA1 b;;
 let tohex s = transform_string (Hexa.encode()) s
 let ripOriginal (s: string) = 
 	tohex (hash_string (Hash.ripemd160()) s) ;;
-print_string (ripOriginal "abcdefghijklmnopqrstuvwxyz");;
 
-let ripemd160 (data : bytes ref) =
-	let data = ! data in 
+let ripemd160 (data : bytes) =
 	let dataString = get_cbytes data in 
 	let hashed = ripOriginal dataString in 
 	stringParse hashed;;
@@ -265,7 +263,7 @@ let _OpRIPEMD160(stack: bytes Stack.t ref) (data: bytes ref) : int =
 		Stack.push hashedvalue !stack; 0
 	with _-> -1;;
 
-let _OpSHA1(stack:bytes Stack.t) (data:bytes ref) : int = 
+let _OpSHA1 (stack: bytes Stack.t ref) (data:bytes ref) : int = 
 	try 
 		let value = Stack.pop !stack in 
 		let hashedvalue = sha1 value in 
@@ -290,45 +288,129 @@ let _OpHASH256 (stack:bytes Stack.t ref) (data:bytes ref) : int =
 
 let _OpCodeSep (stack:bytes Stack.t ref) (data:bytes ref) : int = 0;;
 
-		
+(*let _OpCheckSigOneTransaction(stack:bytes Stack.t ref) (data:bytes ref)(transactionOld : transactionType)(transactionNew : transactionType) : int =
+		let publicKey = Stack.pop !stack in 
+		let signature = Stack.pop !stack in
+*)
 
+
+let parseTransaction (transaction:bytes)  = 
+	let nVersion = takeLeft transaction 4 in 
+	let transaction = takeRight transaction 4 in
+		let num = takeLeft transaction 1 in 
+			let numint = int_of_bytes num in
+				let length = 
+					if numint = 253 (*fd*) then 2
+					else if numint = 254 then 4 
+					else if numint = 255 then 8
+					else  0 in 
+					let vin =takeLeft transaction (length +1 ) in 
+					let vinint = intOfBytesVarInput vin in
+					let transaction = takeRight transaction (length +1) in 			
+					let transactionInput : (transactionInputType list) = []  in
+					let refTransactionInput = ref transactionInput in 
+					let counter = ref 0 in 
+					let l = ref 0 in 
+					let temp = 
+						while (!counter != vinint) do
+							let hash = takeLeft transaction 32 in 
+							let transaction = takeRight transaction 32 in 
+							let n = takeLeft transaction 4 in 
+							let transaction = takeRight transaction 4 in 
+							let scriptSigLength = takeLeft transaction 1 in 
+							let scriptSigLengthInt = int_of_bytes scriptSigLength in 
+							let scriptSigLengthIntAdd = 	
+								if scriptSigLengthInt = 253 (*fd*) then 2
+								else if scriptSigLengthInt = 254 then 4 
+								else if scriptSigLengthInt = 255 then 8
+								else  0 in 
+						(*TODO!*)let scriptSigLengthIntAdd = 
+							if scriptSigLengthIntAdd = 0 then scriptSigLengthInt 
+							else let subTransaction = takeRight transaction 1 in let length =  takeRight transaction scriptSigLengthIntAdd in int_of_bytes length in						
+							let scriptSig = takeLeft transaction (scriptSigLengthIntAdd+1) in 
+							let transaction = takeRight transaction (scriptSigLengthIntAdd+1) in 
+							let seq = takeLeft transaction 4 in
+							let transaction = takeRight transaction 4 in
+							let input = {prevout_hash = hash; index = n; scriptSigB = scriptSig; sequence = seq} 									in l := !l + 32 + 4 + 1 + scriptSigLengthInt + 4; 
+						refTransactionInput := List.append !refTransactionInput [input]; 
+ counter:=!counter+1  done
+					 in 
+					let transaction = takeRight transaction !l in 
+					(*ins*)
+		let num = takeLeft transaction 1 in 
+		let numint = int_of_bytes num in
+		let length = 
+			if numint = 253 (*fd*) then 2
+			else if numint = 254 then 4 
+			else if numint = 255 then 8
+			else  0 in 
+		let vout =takeLeft transaction (length +1 ) in 
+			let voutint = intOfBytesVarInput vout in  
+				let transaction = takeRight transaction (length +1) in 		
+				let transactionOutput : (transactionOutputType list) = []  in
+				let refTransactionOutput = ref transactionOutput in 
+				let counter = ref 0 in 
+				let l = ref 0 in 
+					let temp = 
+(* type transactionOutputType = {value: bytes; pkScript: bytes}*)
+						while (!counter != voutint) do
+							let transaction = takeRight transaction !l in
+							let valueCount = takeLeft transaction 8 in 	
+							let transaction = takeRight transaction 8 in 	
+							let scriptPubLength = takeLeft transaction 1 in
+							let scriptPubLengthInt = int_of_bytes scriptPubLength in 
+							let scriptPubLengthIntAdd = 	
+								if scriptPubLengthInt = 253 (*fd*) then 2
+								else if scriptPubLengthInt = 254 then 4 
+								else if scriptPubLengthInt = 255 then 8
+								else  0 in
+let scriptPubLengthIntAdd = 
+							if scriptPubLengthIntAdd = 0 then scriptPubLengthInt 
+							else let subTransaction = takeRight transaction 1 in let length =  takeRight transaction scriptPubLengthIntAdd in int_of_bytes length in	
+							(*!*)let scriptPub = takeLeft transaction (scriptPubLengthIntAdd+1) in 
+							let transaction = takeRight transaction (scriptPubLengthIntAdd+1) in 
+							let output = {value = valueCount; pkScript = scriptPub;}  in 
+ 							l := !l + 8 + 1 + scriptPubLengthInt;  
+						refTransactionOutput := List.append !refTransactionOutput [output]; counter:=!counter+1  done
+					 in 
+					let nLockTime = takeLeft transaction 4 in 
+	let result = {nVersion = nVersion;
+inputcount  = numint;
+inputs = !refTransactionInput;
+outputcount = voutint;
+outputs = !refTransactionOutput;
+nLockTime = nLockTime}
+ in result;;
+
+(*let special_size l = 
+   let rec size_aux previous l = match l with  
+       [] -> 0 
+     |  _::l1  -> size_aux (l::previous)
+   in size_aux [] l ;;
+*)
+let transactionParse transactions =
+	let lst  = [] in 
+	let rec matching transactions  =
+		match transactions with
+			hd::tl -> List.append [(parseTransaction hd)] lst; matching tl
+			| [] -> lst
+	in matching transactions;;
+	
+let verifyOneInput (stack: bytes Stack.t ref) (data : bytes ref) (transactionNew : transactionType) (transactionOld : transactionType) = 0;;	
+		
+let _OpCheckSig (stack:bytes Stack.t ref) (data:bytes ref) (transactionNew:transactionType)(transactions : bytes list) = 
+	let flag = 0 in 
+		let transactionList = transactionParse transactions in 
+		let rec all_transactions stack data transactionNew transactionList = 
+			match transactionList with
+				hd::tl -> verifyOneInput stack data transactionNew hd; all_transactions stack data transactionNew tl
+				| [] -> flag
+		in all_transactions stack data transactionNew transactionList;;
 
 let stack : bytes Stack.t = Stack.create ();;
 
 
 print_string(Int64.to_string (long_of_bytes (stringParse "ffffffff")));;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
