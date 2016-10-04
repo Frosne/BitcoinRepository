@@ -73,13 +73,13 @@ let bytes_of_long nb (i:int64) =
 	let stringCastOneElement(symbol:char): int = 
 		let el = symbol in 
 	 	let result = 
-		if  el = 'a' then 10 
-		else if el = 'b' then 11
-		else if el = 'c' then 12
-		else if el = 'd' then 13
-		else if el = 'e' then 14
-		else if el = 'f' then 15
-		else if el >='0' && el <='9' then
+		if  (el = 'a' || el = 'A') then 10 
+		else if (el = 'b' || el = 'B') then 11
+		else if (el = 'c' || el = 'C') then 12
+		else if (el = 'd' || el = 'D') then 13
+		else if (el = 'e' || el = 'E') then 14
+		else if (el = 'f' || el = 'F') then 15
+		else if (el >='0' && el <='9') then
 			begin
 			let code = Char.code el in 
 			let one = Char.code '0' in 
@@ -396,25 +396,99 @@ let transactionParse transactions =
 			| [] -> lst
 	in matching transactions;;
 	
-let verifyOneInput (stack: bytes Stack.t ref) (data : bytes ref) (transactionNew : transactionType) (transactionOld : transactionType) = 0;;	
+(* type transactionInputType = {prevout_hash: bytes; index : bytes; scriptSigB: bytes; sequence: bytes}
+
+type transactionOutputType = {value: bytes; pkScript: bytes}
+
+type transactionType = {nVersion:bytes; inputcount : int; inputs : transactionInputType list; outputcount: int; outputs: transactionOutputType list;nLockTime : bytes}
+*)
+
+(*for variable = start_value to end_value do
+  expression
+done*)
+let parseScript (script: bytes)(ckSig : int ref) = 
+	let lstCodeSep = [] in 
+	let scriptString = get_cbytes script in 
+	for i = 0 to script.length do
+		let el1 = getByte script.bl i in 
+		let el2 = getByte script.bl (i+1) in 
+		let str = String.concat (String.make 1 el1) [(String.make 1 el2)] in 
+		let bts = abytes str in 
+		let bts = int_of_bytes bts in 
+		if ((bts > 0) && (bts <76))
+			then i = i+ bts
+		else if (bts == 171) 
+			then begin lstCodeSep = List.append [1] lstCodeSep; i = i+2 end
+		else if (bts == 172) 
+			then begin ckSig := i; i = i+2 end
+		else i = i+1
+	done;lstCodeSep;;	
+
+let getByteinBytes (data : bytes) (i : int) = 
+	let el1 = getByte data.bl i in 
+	let el2 = getByte data.bl (i+1) in 
+	let str  = String.concat (String.make 1 el1) [(String.make 1 el2)] in
+	abytes str;;
+
+let findBetween position lst = 
+	let max = ref (-1) in 
+	let rec listSearch position  lst = 
+		match lst with 
+		hd::tl -> 
+			if (hd<position) then 
+				begin max := hd; listSearch position tl end 
+			else listSearch position tl
+		| [] -> !max
+	in listSearch position lst;;
+
+let regenerateList script = 
+	let scriptAfterTreatment = empty_bytes in 
+ 	let positionOfCkSig = ref 0 in 
+	let parseScr = parseScript script positionOfCkSig in 
+	let position = findBetween !positionOfCkSig parseScr in 
+	let pred elem = elem > position in 
+	let tup = List.partition pred parseScr in true;;
+	(*let currentTuple = scnd tup in 
+		for i = List.nth currentTuple 0 to List.nth currentTuple ((List.length currentTuple) -1) do
+			if 
+	
+	*)
+
+let parseScriptReplaceCodeSeparators(script:bytes) = 
+	let ckSigRef = ref 0 in 
+	let lst = parseScript script ckSigRef in true;;
+
+(*parseScript (stringParse "76A91489ABCDEFABBAABBAABBAABBAABBAABBAABBAABBA88AC")*)
+
+
+let verifyOneInput (stack: bytes Stack.t ref) (data : bytes ref) (transactionNew : transactionType) (transactionOld : transactionType) (counter : int) =
+	let pubKey = Stack.pop !stack in 
+	let sign = Stack.pop !stack in 
+(*now it's a list*)
+	let scriptOutputs = transactionOld.outputs in 
+	let numberOutput = transactionNew.inputs in 
+	let numberOutput = List.nth numberOutput counter in 
+	let numberOutput = numberOutput.index in 
+	let numberOutput = int_of_bytes numberOutput in (* Here change endian*)
+	let scriptOutput = List.nth scriptOutputs numberOutput in 
+	let scriptOutput = scriptOutput.pkScript in 
+	
+ true;;	
 		
 let _OpCheckSig (stack:bytes Stack.t ref) (data:bytes ref) (transactionNew:transactionType)(transactions : bytes list) = 
-	let flag = 0 in 
+	let flag = true in 
+	let counter = 0 in 
 		let transactionList = transactionParse transactions in 
 		let rec all_transactions stack data transactionNew transactionList = 
 			match transactionList with
-				hd::tl -> verifyOneInput stack data transactionNew hd; all_transactions stack data transactionNew tl
+				hd::tl -> flag = flag && verifyOneInput stack data transactionNew hd counter; counter = counter +1;  all_transactions stack data transactionNew tl
 				| [] -> flag
 		in all_transactions stack data transactionNew transactionList;;
 
 let stack : bytes Stack.t = Stack.create ();;
 
 
-print_string(Int64.to_string (long_of_bytes (stringParse "ffffffff")));;
-
+(*print_string(Int64.to_string (long_of_bytes (stringParse "ffffffff")));;*)
 
 
 (* /Main functionality*) 
-
-
-
