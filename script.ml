@@ -70,7 +70,7 @@ let bytes_of_long nb (i:int64) =
     let b = String.make nb (char_of_int 0) in
       abytes(put_bytes b nb i);;
 	
-	let stringCastOneElement(symbol:char): int = 
+	let stringCastOneElement(symbol:char): int =
 		let el = symbol in 
 	 	let result = 
 		if  (el = 'a' || el = 'A') then 10 
@@ -88,7 +88,7 @@ let bytes_of_long nb (i:int64) =
 		else 0
  in result;;
 
-	let stringParse (line:string) = 
+	let stringParse (line:string) =  
 	let bytes = ref empty_bytes in 
 	let count = ref (String.length line -1) in 
 	while !count >= 0 do
@@ -406,29 +406,25 @@ type transactionType = {nVersion:bytes; inputcount : int; inputs : transactionIn
 (*for variable = start_value to end_value do
   expression
 done*)
+
+
+let getByteInBytes (data : bytes) (i : int) = 
+	let v = takeRight data i 
+	in takeLeft v 1;;
+
 let parseScript (script: bytes)(ckSig : int ref) = 
 	let lstCodeSep = [] in 
-	let scriptString = get_cbytes script in 
-	for i = 0 to script.length do
-		let el1 = getByte script.bl i in 
-		let el2 = getByte script.bl (i+1) in 
-		let str = String.concat (String.make 1 el1) [(String.make 1 el2)] in 
-		let bts = abytes str in 
-		let bts = int_of_bytes bts in 
+	for i = 0 to (script.length -1) do
+		let bts = getByteInBytes script i in 
+		let bts = int_of_bytes bts in print_int bts;
 		if ((bts > 0) && (bts <76))
 			then i = i+ bts
 		else if (bts == 171) 
-			then begin lstCodeSep = List.append [1] lstCodeSep; i = i+2 end
+			then begin lstCodeSep = List.append [1] lstCodeSep; i = i+1 end
 		else if (bts == 172) 
-			then begin ckSig := i; i = i+2 end
+			then begin ckSig := i; i = i+1 end
 		else i = i+1
 	done;lstCodeSep;;	
-
-let getByteinBytes (data : bytes) (i : int) = 
-	let el1 = getByte data.bl i in 
-	let el2 = getByte data.bl (i+1) in 
-	let str  = String.concat (String.make 1 el1) [(String.make 1 el2)] in
-	abytes str;;
 
 let findBetween position lst = 
 	let max = ref (-1) in 
@@ -441,24 +437,25 @@ let findBetween position lst =
 		| [] -> !max
 	in listSearch position lst;;
 
-let regenerateList script = 
-	let scriptAfterTreatment = empty_bytes in 
+let regenerateList script : bytes= 
+	let scriptAfterTreatment = ref empty_bytes in 
  	let positionOfCkSig = ref 0 in 
 	let parseScr = parseScript script positionOfCkSig in 
-	let position = findBetween !positionOfCkSig parseScr in 
-	let pred elem = elem > position in 
-	let tup = List.partition pred parseScr in true;;
-	(*let currentTuple = scnd tup in 
-		for i = List.nth currentTuple 0 to List.nth currentTuple ((List.length currentTuple) -1) do
-			if 
-	
-	*)
-
-let parseScriptReplaceCodeSeparators(script:bytes) = 
-	let ckSigRef = ref 0 in 
-	let lst = parseScript script ckSigRef in true;;
-
-(*parseScript (stringParse "76A91489ABCDEFABBAABBAABBAABBAABBAABBAABBAABBA88AC")*)
+		if (List.length parseScr > 0) then
+			 begin
+		let position = findBetween !positionOfCkSig parseScr in 
+		let pred elem = elem > position in 
+		let tup = List.partition pred parseScr in 
+		let currentTuple = snd tup in 
+			for i = List.nth currentTuple 0 to (script.length-1) do 
+			begin 
+				let tempPred elem = elem == i in 
+					if not( List.exists tempPred currentTuple )
+				then scriptAfterTreatment := !scriptAfterTreatment @| (getByteInBytes script i)
+			end
+ 			done;
+		end;
+	!scriptAfterTreatment;;
 
 
 let verifyOneInput (stack: bytes Stack.t ref) (data : bytes ref) (transactionNew : transactionType) (transactionOld : transactionType) (counter : int) =
@@ -492,3 +489,6 @@ let stack : bytes Stack.t = Stack.create ();;
 
 
 (* /Main functionality*) 
+
+
+
