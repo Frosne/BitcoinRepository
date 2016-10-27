@@ -619,17 +619,19 @@ let transactionNew = parseTransaction(stringParse("0100000001eccf7e3034189b85198
 
 (*let ver = verifyOneInput stackRef data transactionNew transactionOld 0;;*)
 	
-let computeScript transaction input = 
+(* takes input of new transaction and returns script to prove*)
+let computeScriptInput transaction input = 
 	let script = transaction.inputs in 
 	let script = List.nth script input in 
 	let script = script.scriptSigB in 
-	let script = takeRight script 1 in 
-	let lengthOfScript = takeLeft script 1 in 
-	let lengthOfScript = int_of_bytes lengthOfScript in
-	let script = takeRight script 1 in 
-	takeRight script lengthOfScript;;
+	takeRight script 1;;
 
-let scriptTest
+let computeScriptOutput transaction output = 
+	let script = transaction.outputs in 
+	let script = List.nth script output in 
+	let script = script.pkScript in 
+	takeRight script 1;;
+
 let scriptToStack script stack = 
 	let scriptCopy = !script in 
 	let scriptCopyRef = ref scriptCopy in 
@@ -637,24 +639,14 @@ let scriptToStack script stack =
 		let l = takeLeft !scriptCopyRef 1 in 
 		let l = int_of_bytes l in 
 		scriptCopyRef := takeRight !scriptCopyRef 1; 
-		Stack.push (takeLeft !scriptCopyRef l); scriptCopyRef :=takeRight !scriptCopyRef l done;; 
-	
+		Stack.push (takeLeft !scriptCopyRef l) !stack; scriptCopyRef :=takeRight !scriptCopyRef l done;; 
+
 let verifyOneInputTemp transactionNew transactionOld counter = 
 	let input = takeInputNumber transactionNew counter in 
-	let script = computeScript transactionOld input in (*this script will be parsed and pushed to stack*)
-	let stack = Stack.create() in
-	let stack = ref stack in  
-	let data = ref script in 	
-		let rec x data =
-			let result = 
-				match (takeLeft !data 1) with 
-				x when x = bytes_of_int 1 168 ->begin _OpSHA256 stack data end 
-		in if result == 0 then x data else false
-	in x data;;
-
-let verifyOneInputTempTest  (script:bytes) counter = 
-	let stack : bytes Stack.t = Stack.create() in 
-	let stackRef = ref stack in Stack.push empty_bytes !stackRef;
+	let scriptOld = computeScriptInput transactionOld input in 
+	let scriptNew = computeScriptOutput transactionNew in (*this script will be parsed and pushed to stack*)
+	let stack = Stack.create() in 
+	let stackRef = ref stack in scriptToStack scriptNew !stackRef; 
 	let data = ref script in
 		let rec x data = print_stack_bytes !stackRef;
 			let result = 
