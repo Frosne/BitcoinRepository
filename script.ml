@@ -538,7 +538,6 @@ let verify transactionSigned (transaction:bytes) transactionNew  =
 	{ec_params = params; ec_point = point; ec_priv = None} in verify transactionSigned transaction key;;
 
 let takeInputNumber transaction inputNumber =
-	let inputNumber = 0 in 
 	let transactionInputs = transaction.inputs in 
 	let transactionInput = List.nth transactionInputs inputNumber in 
 (* in human representaation it's input + 1 *)
@@ -616,8 +615,6 @@ let data = ref empty_bytes ;;
 let transactionOld = parseTransaction( stringParse("010000000126c07ece0bce7cda0ccd14d99e205f118cde27e83dd75da7b141fe487b5528fb000000008b48304502202b7e37831273d74c8b5b1956c23e79acd660635a8d1063d413c50b218eb6bc8a022100a10a3a7b5aaa0f07827207daf81f718f51eeac96695cf1ef9f2020f21a0de02f01410452684bce6797a0a50d028e9632be0c2a7e5031b710972c2a3285520fb29fcd4ecfb5fc2bf86a1e7578e4f8a305eeb341d1c6fc0173e5837e2d3c7b178aade078ffffffff02b06c191e010000001976a9143564a74f9ddb4372301c49154605573d7d1a88fe88ac00e1f505000000001976a914010966776006953d5567439e5e39f86a0d273bee88ac00000000"));;
 
 let transactionNew = parseTransaction(stringParse("0100000001eccf7e3034189b851985d871f91384b8ee357cd47c3024736e5676eb2debb3f201000000cf8c308188024200ae0e580452d62234f8ee8b19495faabd0ab8261e1b3383459bea84e8dff7c29c62eecb2d8644431ab9d6cf767b0ab4d9153c4c858b3e87edf166fc3957ebfb3e0f0242013581052641b809882c41d080a6dfcf9e153e73b2870634d9acba7596d65f1294be0952133f7c8997dde48c4d3f13b3e819948e61bb6430af1087c891aeed781a4601410401ae48443586db2077211b21ccd5c11694203da633552ae95049c683efc7416e01863c5d4f056089742a641a7279b135d294a969449238c61ee618896507b13cffffffff01605af405000000001976a914097072524438d003d23a2f23edb65aae1bb3e46988ac00000000"));;
-
-(*let ver = verifyOneInput stackRef data transactionNew transactionOld 0;;*)
 	
 (* takes input of new transaction and returns script to prove*)
 let computeScriptInput transaction input = 
@@ -633,7 +630,7 @@ let computeScriptOutput transaction output =
 	takeRight script 1;;
 
 let scriptToStack script stack = 
-	let scriptCopy = !script in 
+	let scriptCopy = script in 
 	let scriptCopyRef = ref scriptCopy in 
 	while (length !scriptCopyRef > 0) do
 		let l = takeLeft !scriptCopyRef 1 in 
@@ -643,12 +640,12 @@ let scriptToStack script stack =
 
 let verifyOneInputTemp transactionNew transactionOld counter = 
 	let input = takeInputNumber transactionNew counter in 
-	let scriptOld = computeScriptInput transactionOld input in 
-	let scriptNew = computeScriptOutput transactionNew in (*this script will be parsed and pushed to stack*)
+	let scriptOld = computeScriptOutput transactionOld input in 
+	let scriptNew = computeScriptInput transactionNew counter in  (*this script will be parsed and pushed to stack*)
 	let stack = Stack.create() in 
-	let stackRef = ref stack in scriptToStack scriptNew !stackRef; 
-	let data = ref script in
-		let rec x data = print_stack_bytes !stackRef;
+	let stackRef = ref stack in scriptToStack scriptNew stackRef; print_stack_bytes !stackRef;
+	let data = ref scriptOld in printBytes !data;
+		let rec x data = print_endline""; print_endline"";print_stack_bytes !stackRef;
 			let result = 
 				if (length !data >0 ) then 
 					match int_of_bytes(takeLeft !data 1) with 
@@ -660,6 +657,9 @@ let verifyOneInputTemp transactionNew transactionOld counter =
 				else 1
 		in if result == 0 then x data else if result ==1 then true  else false
 	in x data;;
+
+
+verifyOneInputTemp transactionNew transactionOld 0;;
 
 let getTransactionByHash hash = hash;; 
 

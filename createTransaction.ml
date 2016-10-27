@@ -230,7 +230,7 @@ let scriptPubLengthIntAdd =
 							let output = {value = valueCount; pkScript = scriptPub;}  in 
  							l := !l + 8 + 1 + scriptPubLengthInt;  
 						refTransactionOutput := List.append !refTransactionOutput [output]; counter:=!counter+1  done
-					 in let transaction = takeRight transaction !l) in 	
+					 in let transaction = takeRight transaction !l in 	
 					let nLockTime = takeLeft transaction 4 in 
 	let result = {nVersion = nVersion;
 inputcount  = numint;
@@ -289,10 +289,9 @@ let generateInputS(transaction: bytes ) (index :int )(script:bytes) : bytes =
 	let index = index -1 in 
 	let hash = transactionHash transaction in 
 	let indexVar = bytes_of_int_big_endian 4 index  in 
-	let script = script in 
 	let length = length script in 
 	let length = bytes_of_int 1 length in
-	let script = length@|script in  print_endline " --- Script itself --- "; printBytes script; print_endline "" ;
+	let script = length@|script in print_endline "!!!"; printBytes length;
 	let sequence = stringParse "ffffffff" in 
 	hash @| indexVar @| script @|sequence;;
 
@@ -344,17 +343,17 @@ let createTransaction (transactions : bytes list)(indexes : int list) (amounts :
 	let hash = bytes_of_int_big_endian 4 1 in 
 	let transaction13 =  nVersion  @| vinCount @| inputs @| voutCount @| outputs @| locktime @| hash in 
 	let transaction14 = sha2 transaction13 in 
-		print_endline"Transaction before being hashed:"; printBytes(transaction13); print_endline "";
-		print_endline"Transaction after being hashed:"; printBytes (transaction14); print_endline "";
+		(*print_endline"Transaction before being hashed:"; printBytes(transaction13); print_endline "";
+		print_endline"Transaction after being hashed:"; printBytes (transaction14); print_endline "";*)
 	let signed = signTransaction transaction14 in
-		print_endline"Transaction after being signed:"; printBytes(signed); print_endline "";
+		(*print_endline"Transaction after being signed:"; printBytes(signed); print_endline "";*)
 	let signed = signed @| bytes_of_int 1 1 in 
 	let lengthScript = length signed in 
 	let lengthScript = bytes_of_int 1 lengthScript in 
 	let publicKey = bytes_of_int 1 4 @| (takeLeft key.ec_point.ecx 32) @| (takeLeft key.ec_point.ecy 32) in (*!!!!*)
 	let publicKeyLength = length publicKey in 
 	let publicKeyLength = bytes_of_int 1 publicKeyLength in 
-		print_endline"Key:"; printBytes(takeLeft key.ec_point.ecx 32); print_endline""; printBytes (takeLeft key.ec_point.ecy 32); print_endline""; 
+		(*print_endline"Key:"; printBytes(takeLeft key.ec_point.ecx 32); print_endline""; printBytes (takeLeft key.ec_point.ecy 32); print_endline""; *)
 	let script = lengthScript @| signed @| publicKeyLength @| publicKey in
 	let inputs = generateInputsS transactions indexes script in 
 	nVersion @| vinCount @| inputs @| voutCount @| outputs @|locktime
@@ -370,9 +369,9 @@ print_endline "Hash:";;
 *)
 let z : int64 = Int64.of_int 99900000;;
 let transactionTest = createTransaction [transactionOld][2][z][stringParse "14097072524438d003d23a2f23edb65aae1bb3e469"];;
-(*print_endline "";;
+print_endline "";;
 printBytes(transactionTest);;
-print_endline "";;*)
-
+print_endline "";;
+(*
 print_endline "";;print_endline "";;
-printBytes  ((parseTransaction transactionTest).nLockTime);;
+printBytes  ((parseTransaction transactionTest).nLockTime);;*)
