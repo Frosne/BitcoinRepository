@@ -31,7 +31,7 @@ let stringConcat s1 s2 =
     !res
 
 
-let printBytes bytes= print_string(print_bytes bytes);;
+let printBytes bytes= print_string(print_bytes bytes); print_endline "" ;;
 
 (*number representation*)
 let bytes_of_long_big_endian nb (i:int64) =
@@ -192,7 +192,7 @@ let _OpcodeZero (stack: bytes Stack.t ref) (data : bytes ref ) =
 		Stack.push empty_bytes !stack; 0
 	with _ -> -1;;
 (* OPCODE 1 - 75 *)
-let _OpcodePush (stack: bytes Stack.t ref) (data: bytes ref) : int = 
+let _OpPush (stack: bytes Stack.t ref) (data: bytes ref) : int = 
 	try
 		let value = takeLeft !data 1 in data := takeRight !data 1; 
 		let value = int_of_bytes value in 
@@ -252,16 +252,23 @@ let _OpVerify (stack: bytes Stack.t ref) (data:bytes ref): int =
 	try
 		let value = Stack.top !stack in 
 		let value = int_of_bytes value in 
-		let result =
-			if value == 0 then 0 else -1 in result
+			if value == 0 then 0 else -1 
 	with _ -> -1;;
+
+let _OpEqualVerify(stack:bytes Stack.t ref) (data: bytes ref) : int = 
+	try
+		let s1 = Stack.pop !stack in 
+		let s2 = Stack.pop !stack in 
+			if s1 == s2 then 0 else -1 
+	with _ -> -1;;
+	
 
 let _OpReturn (stack:bytes Stack.t ref) (data:bytes ref) : int = -1;;
 
 let _OpDup(stack:bytes Stack.t ref) (data:bytes ref) : int =
 	try
 		let value = Stack.top !stack in 
-		Stack.push value !stack; 0
+		Stack.push value !stack; data:=takeRight !data 1; 0
 	with _-> -1;;
 
 (*Crypto *)
@@ -281,8 +288,8 @@ let ripemd160 (data : bytes) =
 let _OpSHA256(stack:bytes Stack.t ref) (data:bytes ref) : int = 
 	try 
 		let value = Stack.pop !stack in 
-		let hashedvalue = sha256 value in 
-		Stack.push hashedvalue !stack; 0
+		let hashedvalue = sha256 value in printBytes !data;
+		data := takeRight !data 1; Stack.push hashedvalue !stack; 0
 	with _-> -1;;
 
 let _OpRIPEMD160(stack: bytes Stack.t ref) (data: bytes ref) : int = 
@@ -304,7 +311,7 @@ let _OpHASH160 (stack:bytes Stack.t ref) (data:bytes ref) : int =
 		let value = Stack.pop !stack in 
 		let hashedvalue = sha256 value in 
 		let hashedvalue = ripemd160 hashedvalue in 
-		Stack.push hashedvalue !stack; 0
+		Stack.push hashedvalue !stack; data := takeRight !data 1; 0
 	with _-> -1;;
 
 let _OpHASH256 (stack:bytes Stack.t ref) (data:bytes ref) : int = 
@@ -610,7 +617,7 @@ let transactionOld = parseTransaction( stringParse("010000000126c07ece0bce7cda0c
 
 let transactionNew = parseTransaction(stringParse("0100000001eccf7e3034189b851985d871f91384b8ee357cd47c3024736e5676eb2debb3f201000000cf8c308188024200ae0e580452d62234f8ee8b19495faabd0ab8261e1b3383459bea84e8dff7c29c62eecb2d8644431ab9d6cf767b0ab4d9153c4c858b3e87edf166fc3957ebfb3e0f0242013581052641b809882c41d080a6dfcf9e153e73b2870634d9acba7596d65f1294be0952133f7c8997dde48c4d3f13b3e819948e61bb6430af1087c891aeed781a4601410401ae48443586db2077211b21ccd5c11694203da633552ae95049c683efc7416e01863c5d4f056089742a641a7279b135d294a969449238c61ee618896507b13cffffffff01605af405000000001976a914097072524438d003d23a2f23edb65aae1bb3e46988ac00000000"));;
 
-let ver = verifyOneInput stackRef data transactionNew transactionOld 0;;
+(*let ver = verifyOneInput stackRef data transactionNew transactionOld 0;;*)
 	
 let computeScript transaction input = 
 	let script = transaction.inputs in 
@@ -622,35 +629,45 @@ let computeScript transaction input =
 	let script = takeRight script 1 in 
 	takeRight script lengthOfScript;;
 
-let bytesToList script = [];;
-
-let listToBytes = empty_bytes;;
-
+let scriptTest
+let scriptToStack script stack = 
+	let scriptCopy = !script in 
+	let scriptCopyRef = ref scriptCopy in 
+	while (length !scriptCopyRef > 0) do
+		let l = takeLeft !scriptCopyRef 1 in 
+		let l = int_of_bytes l in 
+		scriptCopyRef := takeRight !scriptCopyRef 1; 
+		Stack.push (takeLeft !scriptCopyRef l); scriptCopyRef :=takeRight !scriptCopyRef l done;; 
+	
 let verifyOneInputTemp transactionNew transactionOld counter = 
-	let input = List.nth transactionNew.inputs counter in 
-	let input = input.index in 
-	let input = int_of_bytes input in
-	let script = computeScript transactionOld input in 
-	let script = bytesToList script in 
-	let flag = true in 
-	let stack = Stack.create () in
-	let stack = ref stack in 
-	let data = ref empty_bytes in 
-		let rec scriptParse script = 
-			match script with 
-			hd::tl -> 
-				let elem = 5 in
-				let result = 
-					if elem == 168 then _OpSHA256 stack data 
-					else if elem == 169 then _OpSHA256 stack data
-					else if elem >1 and elem <75 then 
-					let data = makeBytesFromList tl elem in 
-		  _OpPush stack take
-					else -1
-				in
-				if result == 0 then scriptParse tl else false
-			| [] -> flag
-		in scriptParse script;;
+	let input = takeInputNumber transactionNew counter in 
+	let script = computeScript transactionOld input in (*this script will be parsed and pushed to stack*)
+	let stack = Stack.create() in
+	let stack = ref stack in  
+	let data = ref script in 	
+		let rec x data =
+			let result = 
+				match (takeLeft !data 1) with 
+				x when x = bytes_of_int 1 168 ->begin _OpSHA256 stack data end 
+		in if result == 0 then x data else false
+	in x data;;
+
+let verifyOneInputTempTest  (script:bytes) counter = 
+	let stack : bytes Stack.t = Stack.create() in 
+	let stackRef = ref stack in Stack.push empty_bytes !stackRef;
+	let data = ref script in
+		let rec x data = print_stack_bytes !stackRef;
+			let result = 
+				if (length !data >0 ) then 
+					match int_of_bytes(takeLeft !data 1) with 
+					118 -> begin _OpDup stackRef data end |
+					136 -> begin _OpEqualVerify stackRef data end |
+					168 -> begin _OpSHA256 stackRef data end |
+					169 -> begin _OpHASH160 stackRef data end |
+					x when x > 0 && x < 76 -> begin _OpPush stackRef data end
+				else 1
+		in if result == 0 then x data else if result ==1 then true  else false
+	in x data;;
 
 let getTransactionByHash hash = hash;; 
 
@@ -667,5 +684,4 @@ let verifyPublic transaction =
 
 	(* in fact, there i need to get the transactions by hashed 
 	for now i have no idea how to do this*)
-
 
