@@ -24,9 +24,10 @@ let stringConcat s1 s2 =
     done;
     !res
 
-let random bound = 
-	let temp = int_of_bytes (CoreCrypto.random 1) in 
-	((temp mod bound)+1);;
+let random ?(boundL=0) ~boundH = 
+	let temp = int_of_bytes (CoreCrypto.random 2) in 
+	let temp = temp + boundL  in 
+	(temp mod boundH);;
 
 let printBytes bytes= print_string(print_bytes bytes);;
 
@@ -93,9 +94,11 @@ let hashAdd ~elem ~setRef =
 	let set = HashSet.add elem !setRef in setRef:=set;;
 
 let hashTakeRandom ~set = 
-	let lst = HashSet.elements set in print_int(List.length lst);
-	let rnd = random (List.length lst) in List.nth lst rnd;;
+	let lst = HashSet.elements !set in 
+	let rnd = random ~boundL: 0 ~boundH: (List.length lst) in List.nth lst rnd;;
 
+let hashEnumerate ~set = 
+	HashSet.iter (fun s -> printBytes s) set;;
 (* Set *)
 
 (* IO *)
@@ -104,7 +107,6 @@ let parseTransaction transaction =
 	let inputCount = takeLeft transaction 4 in 
 	let inputCount = int_of_bytes inputCount in 
 	let transaction = takeRight transaction 4 in 
-		printBytes transaction; print_endline"";
 	let transactionInput : (transactionInputType list) = []  in
 	let refTransactionInput = ref transactionInput in 
 		let counter = ref 0 in 
@@ -189,35 +191,33 @@ let rec writeTransactionsToFile ~transactions ~fileName =
 
 let computeHash (transaction : transactionType) : bytes = 
 	let transaction = serializeTransaction transaction in
-	printBytes (hash SHA256(hash SHA256 transaction));
 	hash SHA256(hash SHA256 transaction);;
 
 let createStartTransaction = 
 	let lst = [{prevout_hash = bytes_of_int 20 1; index = bytes_of_int 4 1;}] in {inputcount = List.length lst; inputs = lst; flagExit = bytes_of_int 4 0};;
 
-
+(* create transaction with at least one input*)
 let createTransaction hash = 
-	let counter = random 3 in 
+	let counter = random ~boundL: 1 ~boundH: 3 in 
 	let lst = ref []  in 
 	while (List.length !lst< counter) do
-	print_int (List.length !lst); 
 	let temp = 
 	[{prevout_hash = hash; 
 	index = bytes_of_int 4 (random 3)}] 
 	in lst :=  List.append !lst temp
 	done; {inputcount = List.length !lst; inputs = !lst; flagExit = bytes_of_int 4 0};;
  
-let createRoundTransaction ~lst ~globalSetRef  = 
+let createRoundTransaction ~lst   ~globalSet  = 
 	let localSet = ref HashSet.empty in 
 	let temp = ref [] in 
 	List.map (fun elem -> 
-		let r = random 3 in 
+		let r =  random ~boundL: 1 ~boundH: 3 in 
 		let hash = computeHash elem in 
 		while(List.length !temp != r) do
-			let transactionNew = createTransaction hash in
+			let transactionNew = createTransaction (hashTakeRandom globalSet) in
 			hashAdd ~elem: hash ~setRef: localSet; 
 			temp := List.append [transactionNew] !temp done) lst;
-	globalSetRef := HashSet.union !globalSetRef !localSet;	
+	 globalSet := HashSet.union !globalSet !localSet;	
 	 !temp;;
 
 let start = createStartTransaction ;;
@@ -225,15 +225,16 @@ writeTransactionToFile ~transaction: start ~fileName: "./input_output" ;;
 (*let round = createRoundTransaction [start];;*)
 
 let createBlockchain ~startPoint ~length ~fileName =
-	let globalSet = ref HashSet.empty in  
+	let globalSet = ref HashSet.empty in 
+	hashAdd ~elem: (computeHash startPoint) ~setRef: globalSet;
 	let counter = ref 0 in 
 	let source = [startPoint] in
 	while (!counter != length) do
-	let temp = 	createRoundTransaction ~lst: source ~globalSetRef: globalSet in 
+	let temp = 	createRoundTransaction ~lst: source ~globalSet: globalSet in 
 	writeTransactionsToFile ~transactions: temp ~fileName: fileName; 
 	counter := !counter +1 done;; 
 
-createBlockchain ~startPoint: start  ~fileName: "./input_output" ~length: 2;;
+createBlockchain ~startPoint: start  ~fileName: "./input_output" ~length: 3;;
 
 
 (*
