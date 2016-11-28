@@ -3,6 +3,7 @@ open Platform.Bytes;;
 open Platform.Option;;
 open Cryptokit;;
 open StdLabels;;
+open FStar.String
 
 (* Сrypto *)
 
@@ -28,24 +29,26 @@ let random boundL boundH  =
 
 	
 (* Misc *)
+val stringCompare: s1:string -> s2: string -> Tot bool
 let stringCompare s1 s2 = 
 	let result = (compare s1 s2) in
-		if result == 0
+		if result = 0
 			then true
-		else false
+		else false    
 
+(* lenght of i > b length*)
 (*length of result is equal to i*)		
-let bytesTakeLeft (b: bytes) i = 
-	let splitted = split b i in
+val bytesTakeLeft: b:bytes -> i:nat {Seq.length b > i} -> Tot (r:bytes{Seq.length r = i })
+let bytesTakeLeft b i = 
+	let splitted = Platform.Bytes.split b i in
 		let part = fst splitted in part
+		
 
 (*length of a result is equal to length -i *)		
-let bytesTakeRight(b:bytes) i = 
-	if (length b == 1) 
-		then empty_bytes
-	else
-		let splitted = split b i in
-			let part = snd splitted in part
+val bytesTakeRight: b:bytes -> i:nat {Seq.length b > i} -> Tot (r:bytes{Seq.length (r) == (Seq.length b) - i})
+let bytesTakeRight b  i = 
+    let splitted = Platform.Bytes.split b i 
+        in snd splitted
 
 (* Printing functions *)
 	
