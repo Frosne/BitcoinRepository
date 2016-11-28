@@ -16,10 +16,21 @@ let hex s = transform_string (Hexa.decode()) s
 let tohex s = transform_string (Hexa.encode()) s
 
 (* no side effects + the number is less/more than bounds*)
-let random ?(boundL=0) ~boundH = 
-	let temp = int_of_bytes (CoreCrypto.random 2) in 
+
+
+assume val random_nat: y:nat -> Tot (x:nat{0 <= x /\ x < y})
+
+(*val sum: a:int -> b:int -> Tot int		
+let sum a b = 
+    a + b
+    *)
+	
+val random: boundL:int{boundL>0} -> boundH:int{boundH>0 && boundH>boundL} -> r:int{r>= boundL && r<boundH}
+let random boundL boundH  = 
+    let generateRandom = CoreCrypto.random 4 in 
+	let temp = int_of_bytes generateRandom in 
 	let v = boundH - boundL in 
-	let temp = temp mod v in temp + boundL
+	let temp = temp % v in temp + boundL
 
 	
 (* Misc *)
