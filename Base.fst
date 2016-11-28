@@ -7,24 +7,18 @@ open StdLabels;;
 (* Сrypto *)
 
 (* should return Tot bytes with size? *)
+val sha256 : b : bytes -> Tot (r:bytes {length r = 32})
 let sha256 b = hash SHA256 b
 (*same*)
+val sha256Double : b : bytes -> Tot (r:bytes {length r = 32})
 let sha256Double b = sha256 (sha256 b)		
 
 (* Tot string && (hex + tohex) == similar *)
+(*no cryptokit in online version*)
 let hex s = transform_string (Hexa.decode()) s
 let tohex s = transform_string (Hexa.encode()) s
 
-(* no side effects + the number is less/more than bounds*)
-
-
-assume val random_nat: y:nat -> Tot (x:nat{0 <= x /\ x < y})
-
-(*val sum: a:int -> b:int -> Tot int		
-let sum a b = 
-    a + b
-    *)
-	
+(* no side effects + the number is less/more than bounds*)	
 val random: boundL:int{boundL>0} -> boundH:int{boundH>0 && boundH>boundL} -> r:int{r>= boundL && r<boundH}
 let random boundL boundH  = 
     let generateRandom = CoreCrypto.random 4 in 
