@@ -5,28 +5,36 @@ open Cryptokit;;
 open StdLabels;;
 
 (* Сrypto *)
+
+(* should return Tot bytes with size? *)
 let sha256 b = hash SHA256 b
+(*same*)
 let sha256Double b = sha256 (sha256 b)		
 
+(* Tot string && (hex + tohex) == similar *)
 let hex s = transform_string (Hexa.decode()) s
 let tohex s = transform_string (Hexa.encode()) s
 
+(* no side effects + the number is less/more than bounds*)
 let random ?(boundL=0) ~boundH = 
 	let temp = int_of_bytes (CoreCrypto.random 2) in 
 	let v = boundH - boundL in 
 	let temp = temp mod v in temp + boundL
 
+	
 (* Misc *)
 let stringCompare s1 s2 = 
 	let result = (compare s1 s2) in
 		if result == 0
 			then true
 		else false
-		
+
+(*length of result is equal to i*)		
 let bytesTakeLeft (b: bytes) i = 
 	let splitted = split b i in
 		let part = fst splitted in part
 
+(*length of a result is equal to length -i *)		
 let bytesTakeRight(b:bytes) i = 
 	if (length b == 1) 
 		then empty_bytes
@@ -36,6 +44,7 @@ let bytesTakeRight(b:bytes) i =
 
 (* Printing functions *)
 	
+(*length is equal to size of both*)	
 val stringConcat: s1:string -> s2:string -> Tot string    
 let stringConcat s1 s2 = 
     String.concat "" [s1;s2]
@@ -79,6 +88,7 @@ let printListBytes lst =
 	
 
 (*Number representation*)
+(*bytes of long + long of bytes return the same value*)
 let bytes_of_long_big_endian ~nb ~(i:int64) =
     let rec put_bytes bb lb n =
       if lb = 0 then failwith "not enough bytes"
@@ -93,6 +103,7 @@ let bytes_of_long_big_endian ~nb ~(i:int64) =
     let b = String.make nb (char_of_int 0) in
       abytes(put_bytes b nb i)
 	  
+(*bytes of int + int of bytes returns the same value*)	  
 let bytes_of_int_big_endian ~nb ~i =
     let rec put_bytes bb lb n =
       if lb = 0 then failwith "not enough bytes"
@@ -156,6 +167,7 @@ let bytesVarIntOfInt (number: int) : bytes 	=
 let result = xor 3 number (bytes_of_int 3 16580608) in result
 		else bytes_of_int 1 0
 		
+(*twice inverse returns the same*)
 let bytesEndianInverse (entity:bytes)  = 
 	let counter = ref 0 in 
 	let str = string_of_bytes entity in 
@@ -171,6 +183,7 @@ let bytesEndianInverse (entity:bytes)  =
 		counter := !counter +2; done; 
 	abytes str		
 	
+(*element returns less than 16*)	
 let stringCastOneElement (symbol:char): int = 
 	let el = symbol in 
 	let result = 
@@ -188,6 +201,7 @@ let stringCastOneElement (symbol:char): int =
 		end
 		else 0
 	in result  
+	  
 	  
 let convertFromHexdecimalToBytes (line:string) = 
 	let bytes = ref empty_bytes in 
@@ -215,9 +229,11 @@ let compareBytes (a:bytes) (b:bytes) =
 	type t = Platform.Bytes.bytes
 	end);;
 
+	(*size = size +1*)
 let hashAdd ~elem ~setRef = 
 	let set = HashSet.add elem !setRef in setRef:=set;;
 
+	(*element is in hashSet*)
 let hashTakeRandom ~set = 
 	let lst = HashSet.elements !set in 
 	let rnd = random ~boundL: 0 ~boundH: (List.length lst) in List.nth lst rnd;;
