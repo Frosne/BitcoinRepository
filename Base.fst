@@ -57,8 +57,7 @@ val stringConcat: s1:string -> s2:string -> Tot string
 let stringConcat s1 s2 = 
     String.concat "" [s1;s2]
 
-assume val print_bytes: bytes -> Tot string		
-		
+val print_bytes: bytes -> Tot string				
 (*overrided from Planform.Bytes*)	
  let print_bytes (x:bytes) : string =
     let s = get_cbytes x in
@@ -72,7 +71,8 @@ assume val print_bytes: bytes -> Tot string
     !res	
 	
 (*Slightly different*)	
-let string_of_bytes (x:bytes) : string =
+(*assume val string_of_bytes_v2 : bytes -> Tot string*)
+let string_of_bytes_v2 (x:bytes) : string =
     let s = get_cbytes x in
     let res = ref "" in
     for i = 0 to String.length s - 1 do
