@@ -59,10 +59,36 @@ class TreeViewFilterWindow(Gtk.Window):
 		receiveForm.set_title("Send to..")
 		self.receiveGrid = Gtk.Grid()
 		self.receiveGrid.set_column_homogeneous(False)
-		self.receiveGrid.set_row_homogeneous(False);
+		self.receiveGrid.set_row_homogeneous(True);
 		self.receiveLabels = list()
-		f
+		self.receiveEntries = list()
+		for i,el in enumerate(["Value", "Address", "Proof"]):
+			label = Gtk.Label(el, xalign = 0)
+			self.receiveLabels.append(label)
+			self.receiveEntries.append(Gtk.Entry())
 
+		self.receiveGrid.attach(self.receiveLabels[0],0,0,1,1)
+		self.receiveGrid.attach_next_to(self.receiveEntries[0], self.receiveLabels[0], Gtk.PositionType.RIGHT, 1,1)
+		self.receiveGrid.attach_next_to(self.receiveLabels[1],self.receiveLabels[0],Gtk.PositionType.BOTTOM,1,1)
+		self.receiveGrid.attach_next_to(self.receiveEntries[1],self.receiveEntries[0],Gtk.PositionType.BOTTOM,1,1)
+		self.receiveGrid.attach_next_to(self.receiveLabels[2],self.receiveLabels[1],Gtk.PositionType.BOTTOM,1,1)
+		self.comboProofModule = Gtk.ListStore(str)
+		proofs = ["a","b","c"]
+		for proof in proofs:
+			self.comboProofModule.append([proof])
+		self.comboProof = Gtk.ComboBox.new_with_model_and_entry(self.comboProofModule)
+		self.comboProof.set_entry_text_column(1)
+		self.receiveGrid.attach_next_to(self.comboProof,self.receiveEntries[1],Gtk.PositionType.BOTTOM,1,1)
+		
+		self.buttonAddR = Gtk.Button("Add")
+		self.buttonCancelR = Gtk.Button("Cancel")
+
+		self.receiveGrid.attach_next_to(self.buttonAddR,self.receiveLabels[2],Gtk.PositionType.BOTTOM,1,1)	
+		self.receiveGrid.attach_next_to(self.buttonCancelR, self.comboProof,Gtk.PositionType.BOTTOM, 1,1)	
+		receiveForm.add(self.receiveGrid)
+		receiveForm.set_modal( True )
+		receiveForm.set_transient_for( self )
+		receiveForm.show_all()
 
 	def popup(self, widget, path, column):
 
@@ -195,6 +221,7 @@ class TreeViewFilterWindow(Gtk.Window):
 		self.values_liststore.append([" ", " ", " ", Gtk.STOCK_ADD])	
 		
 		self.values_list_generate = Gtk.TreeView.new_with_model(self.values_liststore)
+		self.values_list_generate.connect('row-activated',self.newReceiveForm)
 		#self.treeview.set_height_request(100)
 		for i, column_title in enumerate(["Values", "Addresses", "Proofs"]):
 		    renderer = Gtk.CellRendererText()
@@ -239,7 +266,7 @@ class TreeViewFilterWindow(Gtk.Window):
 		self.main_layer.append_page(self.page3, Gtk.Label('Verify Transaction'))
 
 
-		self.addressRequest(author)
+		#self.addressRequest(author)
 		self.show_all()
 
 	def language_filter_func(self, model, iter, data):
