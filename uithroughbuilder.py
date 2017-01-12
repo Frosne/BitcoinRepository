@@ -44,12 +44,13 @@ class TreeViewFilterWindow(Gtk.Window):
 		for path in pathlist:
 			tree_iter = model.get_iter(path)
 			value = model.get_value(tree_iter,3)
-			print(value)
+			info = ToSend(model.get_value(tree_iter,0),model.get_value(tree_iter,1),model.get_value(tree_iter,2))
+			info._print()
 		if (str(value) == "gtk-add"):
 			print("True")
-			return True
+			return (True,None, None)
 		elif (value == "gtk-preferences"):
-			return False	
+			return (False, tree_iter, info)
 	
 	def requestTransactionInformation(self):
 		tree_selection = self.treeview.get_selection()
@@ -67,7 +68,7 @@ class TreeViewFilterWindow(Gtk.Window):
 
 	def newReceiveForm(self, widget = None, path = None, column = None):
 
-		flag = self.requestRowInformation()
+		flag,iterator,info = self.requestRowInformation()
 
 		receiveForm = Gtk.Window()
 		receiveForm.set_title("Send to..")
@@ -103,6 +104,17 @@ class TreeViewFilterWindow(Gtk.Window):
 			self.values_liststore.prepend([receiveEntries[0].get_text(), receiveEntries[1].get_text(), comboProofModule.get_active_text(), Gtk.STOCK_PREFERENCES])
 			receiveForm.destroy()
 			return a
+
+		def delete(button, widget = None):
+			if (iterator != None):
+				self.values_liststore.remove(iterator)
+			receiveForm.destroy()	
+
+		def save_changed(button, widget = None):
+			if (iterator != None):
+				self.values_liststore.remove(iterator)
+			self.values_liststore.prepend([receiveEntries[0].get_text(), receiveEntries[1].get_text(), comboProofModule.get_active_text(), Gtk.STOCK_PREFERENCES])
+			receiveForm.destroy()
 	
 		self.boxReceive = Gtk.Box(spacing=6, homogeneous=False)
 		if (flag):
@@ -113,15 +125,20 @@ class TreeViewFilterWindow(Gtk.Window):
 			buttonCancelR.connect("clicked",dest)	
 			buttonAddR.connect("clicked",save)
 		else:
-			buttonSaveR = Gtk.Button("Save")
+			buttonSave = Gtk.Button("Save")
 			buttonDelete = Gtk.Button("Delete")
 			buttonCancel = Gtk.Button("Cancel")			
-			self.boxReceive.pack_start(buttonSaveR, True, True, 0)			
+			self.boxReceive.pack_start(buttonSave, True, True, 0)			
 			self.boxReceive.pack_start(buttonDelete, True, True, 0)
 			self.boxReceive.pack_start(buttonCancel, True, True, 0)
-			buttonCancel.connect("clicked",dest)	
+			buttonCancel.connect("clicked",dest)
+			buttonDelete.connect("clicked",delete)
+			buttonSave.connect("clicked",save_changed)
+			receiveEntries[0].set_text(info.value)	
+			receiveEntries[1].set_text(info.address)
+			#combobox
 
-		receiveGrid.attach_next_to(self.boxReceive,receiveLabels[2],Gtk.PositionType.BOTTOM,1,1)	
+		receiveGrid.attach_next_to(self.boxReceive,receiveLabels[2],Gtk.PositionType.BOTTOM,2,1)	
 		receiveForm.add(receiveGrid)
 		receiveForm.set_modal( True )
 		receiveForm.set_transient_for( self )
