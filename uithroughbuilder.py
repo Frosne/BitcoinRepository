@@ -7,9 +7,7 @@ from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 Gdk.threads_init()
 
-
 author = "1AJbsFZ64EpEfS5UAjAfcUG8pH8Jn3rn1F"
-
 
 def read_configuration(address=None):
 	f = open('config', 'r')
@@ -33,19 +31,32 @@ class ToSend():
 		self.address = address
 		self.proof = proof
 
+	def _print(self):
+		print(str(self.value) + str(self.address) + str(self.proof))
 
 
 class TreeViewFilterWindow(Gtk.Window):
 
-
+	def requestRowInformation(self):
+		tree_selection = self.values_list_generate.get_selection()
+		(model, pathlist) = tree_selection.get_selected_rows()
+		print(len(pathlist))
+		for path in pathlist:
+			tree_iter = model.get_iter(path)
+			value = model.get_value(tree_iter,3)
+			print(value)
+		if (str(value) == "gtk-add"):
+			print("True")
+			return True
+		elif (value == "gtk-preferences"):
+			return False	
+	
 	def requestTransactionInformation(self):
-
 		tree_selection = self.treeview.get_selection()
 		(model, pathlist) = tree_selection.get_selected_rows()
    		for path in pathlist :
         		tree_iter = model.get_iter(path)
         		value = model.get_value(tree_iter,1)
-
 		link = "https://blockchain.info/rawtx/" + value
 		result = request(link)
 		lst = list()
@@ -54,54 +65,64 @@ class TreeViewFilterWindow(Gtk.Window):
 			lst.append(( parsedTransactions[i]["addr"], parsedTransactions[i]["value"]))
 		return lst
 
-	def AddDeleteNewElement(self, widget=None, path = None, column = None):
-			return newReceiveForm(widget,path,column)
-
 	def newReceiveForm(self, widget = None, path = None, column = None):
+
+		flag = self.requestRowInformation()
 
 		receiveForm = Gtk.Window()
 		receiveForm.set_title("Send to..")
-		self.receiveGrid = Gtk.Grid()
-		self.receiveGrid.set_column_homogeneous(False)
-		self.receiveGrid.set_row_homogeneous(True);
-		self.receiveLabels = list()
-		self.receiveEntries = list()
+		receiveGrid = Gtk.Grid()
+		receiveGrid.set_column_homogeneous(False)
+		receiveGrid.set_row_homogeneous(True);
+		receiveLabels = list()
+		receiveEntries = list()
 		for i,el in enumerate(["Value", "Address", "Proof"]):
 			label = Gtk.Label(el, xalign = 0)
-			self.receiveLabels.append(label)
-			self.receiveEntries.append(Gtk.Entry())
+			receiveLabels.append(label)
+			receiveEntries.append(Gtk.Entry())
 
-		self.receiveGrid.attach(self.receiveLabels[0],0,0,1,1)
-		self.receiveGrid.attach_next_to(self.receiveEntries[0], self.receiveLabels[0], Gtk.PositionType.RIGHT, 1,1)
-		self.receiveGrid.attach_next_to(self.receiveLabels[1],self.receiveLabels[0],Gtk.PositionType.BOTTOM,1,1)
-		self.receiveGrid.attach_next_to(self.receiveEntries[1],self.receiveEntries[0],Gtk.PositionType.BOTTOM,1,1)
-		self.receiveGrid.attach_next_to(self.receiveLabels[2],self.receiveLabels[1],Gtk.PositionType.BOTTOM,1,1)
+		receiveGrid.attach(receiveLabels[0],0,0,1,1)
+		receiveGrid.attach_next_to(receiveEntries[0], receiveLabels[0], Gtk.PositionType.RIGHT, 1,1)
+		receiveGrid.attach_next_to(receiveLabels[1],receiveLabels[0],Gtk.PositionType.BOTTOM,1,1)
+		receiveGrid.attach_next_to(receiveEntries[1],receiveEntries[0],Gtk.PositionType.BOTTOM,1,1)
+		receiveGrid.attach_next_to(receiveLabels[2],receiveLabels[1],Gtk.PositionType.BOTTOM,1,1)
 		
-		self.comboProofModule = Gtk.ComboBoxText()
-		self.comboProofModule.append_text("A")
-		self.comboProofModule.append_text("B")
-		self.comboProofModule.append_text("C")
+		comboProofModule = Gtk.ComboBoxText()
+		comboProofModule.append_text("A")
+		comboProofModule.append_text("B")
+		comboProofModule.append_text("C")
 
-		self.comboProofModule.set_entry_text_column(1)
-		self.receiveGrid.attach_next_to(self.comboProofModule, self.receiveEntries[1], Gtk.PositionType.BOTTOM, 1,1)
-
-		self.buttonAddR = Gtk.Button("Add")
-		self.buttonCancelR = Gtk.Button("Cancel")
+		receiveGrid.attach_next_to(comboProofModule, receiveEntries[1], Gtk.PositionType.BOTTOM, 1,1)
 
 		def dest(self, widget=None):
 			receiveForm.destroy()
-			return False
+			return None
 
-		def save(self, widget = None):
-			a = ToSend(self.receiveLabels[0].get_text(), self.receiveLabels[1].get_text(), self.comboProofModule.get_active_text())
+		def save(btn, widget = None):
+			a = ToSend(receiveEntries[0].get_text(), receiveEntries[1].get_text(), comboProofModule.get_active_text())
+			self.values_liststore.prepend([receiveEntries[0].get_text(), receiveEntries[1].get_text(), comboProofModule.get_active_text(), Gtk.STOCK_PREFERENCES])
+			receiveForm.destroy()
 			return a
+	
+		self.boxReceive = Gtk.Box(spacing=6, homogeneous=False)
+		if (flag):
+			buttonAddR = Gtk.Button("Add")
+			buttonCancelR = Gtk.Button("Cancel")
+			self.boxReceive.pack_start(buttonAddR, True, True, 0)
+			self.boxReceive.pack_start(buttonCancelR, True, True, 0)
+			buttonCancelR.connect("clicked",dest)	
+			buttonAddR.connect("clicked",save)
+		else:
+			buttonSaveR = Gtk.Button("Save")
+			buttonDelete = Gtk.Button("Delete")
+			buttonCancel = Gtk.Button("Cancel")			
+			self.boxReceive.pack_start(buttonSaveR, True, True, 0)			
+			self.boxReceive.pack_start(buttonDelete, True, True, 0)
+			self.boxReceive.pack_start(buttonCancel, True, True, 0)
+			buttonCancel.connect("clicked",dest)	
 
-		self.buttonCancelR.connect("clicked",dest)	
-		self.buttonAddR.connect("clicked",save)
-
-		self.receiveGrid.attach_next_to(self.buttonAddR,self.receiveLabels[2],Gtk.PositionType.BOTTOM,1,1)	
-		self.receiveGrid.attach_next_to(self.buttonCancelR, self.comboProofModule,Gtk.PositionType.BOTTOM, 1,1)	
-		receiveForm.add(self.receiveGrid)
+		receiveGrid.attach_next_to(self.boxReceive,receiveLabels[2],Gtk.PositionType.BOTTOM,1,1)	
+		receiveForm.add(receiveGrid)
 		receiveForm.set_modal( True )
 		receiveForm.set_transient_for( self )
 		receiveForm.show_all()
