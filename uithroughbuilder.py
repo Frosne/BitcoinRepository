@@ -28,10 +28,11 @@ def request (address):
 
 class ToSend():
 
-	def __init__(self):
-		self.value = 0
-		self.address = ""
-		self.proof = 0
+	def __init__(self, value, address, proof):
+		self.value = value
+		self.address = address
+		self.proof = proof
+
 
 
 class TreeViewFilterWindow(Gtk.Window):
@@ -52,6 +53,9 @@ class TreeViewFilterWindow(Gtk.Window):
 		for i in range (len(parsedTransactions)):
 			lst.append(( parsedTransactions[i]["addr"], parsedTransactions[i]["value"]))
 		return lst
+
+	def AddDeleteNewElement(self, widget=None, path = None, column = None):
+			return newReceiveForm(widget,path,column)
 
 	def newReceiveForm(self, widget = None, path = None, column = None):
 
@@ -83,6 +87,17 @@ class TreeViewFilterWindow(Gtk.Window):
 
 		self.buttonAddR = Gtk.Button("Add")
 		self.buttonCancelR = Gtk.Button("Cancel")
+
+		def dest(self, widget=None):
+			receiveForm.destroy()
+			return False
+
+		def save(self, widget = None):
+			a = ToSend(self.receiveLabels[0].get_text(), self.receiveLabels[1].get_text(), self.comboProofModule.get_active_text())
+			return a
+
+		self.buttonCancelR.connect("clicked",dest)	
+		self.buttonAddR.connect("clicked",save)
 
 		self.receiveGrid.attach_next_to(self.buttonAddR,self.receiveLabels[2],Gtk.PositionType.BOTTOM,1,1)	
 		self.receiveGrid.attach_next_to(self.buttonCancelR, self.comboProofModule,Gtk.PositionType.BOTTOM, 1,1)	
