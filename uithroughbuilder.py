@@ -352,7 +352,7 @@ class TreeViewFilterWindow(Gtk.Window):
 		for i in range(len(parsedTransactions)):
 			outputs = parsedTransactions[i]["out"]
 			for j in outputs:
-				if j["addr"] == author:
+				if "addr" in j.keys() and j["addr"] == author:
 					lst.append(transactionList["txs"][i]["hash"])
 		return lst			
 
