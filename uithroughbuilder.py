@@ -64,7 +64,7 @@ class TreeViewFilterWindow(Gtk.Window):
 		parsedTransactions = result["out"] 
 		for i in range (len(parsedTransactions)):
 			lst.append(( parsedTransactions[i]["addr"], parsedTransactions[i]["value"]))
-		return lst
+		return (lst, value)
 
 	def newReceiveForm(self, widget = None, path = None, column = None):
 
@@ -145,10 +145,9 @@ class TreeViewFilterWindow(Gtk.Window):
 		receiveForm.show_all()
 
 	def popup(self, widget, path, column):
-
 		popup = Gtk.Window()
-        	popup.set_title( "Properties" )
-		lst = self.requestTransactionInformation()
+		popup.set_title("Properties")
+		lst, value = self.requestTransactionInformation()
 
 		self.popup_grid = Gtk.Grid()
 		self.popup_grid.set_column_homogeneous(False)
@@ -161,10 +160,13 @@ class TreeViewFilterWindow(Gtk.Window):
 			label = Gtk.Label("Amount:    " +str(lst[i][1]), xalign=0)
 			self.poplabels.append(label)
 		
-		def dest(self, widget=None):
+		def dest(button, widget=None):
 			popup.destroy()
-			return False	
-		
+
+		def add(button, widget=None):
+			self.transaction_liststore.append([value, Gtk.STOCK_CANCEL])	
+			popup.destroy()
+
 		popup.connect("destroy", dest)
 
 		self.popup_grid.attach(self.poplabels[0],0,0,2,2)
@@ -174,7 +176,7 @@ class TreeViewFilterWindow(Gtk.Window):
 		self.buttonAdd = Gtk.Button("Add")
 		self.buttonCancel = Gtk.Button("Close")
 		self.buttonCancel.connect("clicked",dest)
-
+		self.buttonAdd.connect("clicked",add)
 		self.popup_grid.attach_next_to(self.buttonAdd, self.poplabels[len(self.poplabels)-1],Gtk.PositionType.BOTTOM, 1,1)
 		self.popup_grid.attach_next_to(self.buttonCancel, self.buttonAdd, Gtk.PositionType.RIGHT, 1,1)
         	popup.add(self.popup_grid);
@@ -195,14 +197,13 @@ class TreeViewFilterWindow(Gtk.Window):
 		self.main_layer.set_size_request(700, 400)
 		self.add(self.main_layer)
 	
-
 		#Setting up the self.grid in which the elements are to be positionned
 		self.grid = Gtk.Grid()
 		self.grid.set_column_homogeneous(False)
 		self.grid.set_row_homogeneous(False)
 		
 		#Creating the ListStore model
-		self.software_liststore = Gtk.ListStore(int, str)
+		self.software_liststore = Gtk.ListStore(int, str, str)
 		self.current_filter_language = None
 
 		#Creating the filter, feeding it with the liststore model
@@ -214,18 +215,16 @@ class TreeViewFilterWindow(Gtk.Window):
 		self.treeview = Gtk.TreeView.new_with_model(self.language_filter)
 		self.treeview.connect('row-activated',self.popup)
 
-
 		#self.treeview.set_height_request(100)
 		for i, column_title in enumerate(["ID", "Hash"]):
 		    renderer = Gtk.CellRendererText()
-		    column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+		    column = Gtk.TreeViewColumn(column_title, renderer, text=i, font=2)
 		    self.treeview.append_column(column)
 
 		#setting up the layout, putting the treeview in a scrollwindow, and the buttons in a row
 		self.scrollable_treelist = Gtk.ScrolledWindow()
 		self.scrollable_treelist.set_vexpand(True)
 	
-
 		self.labels = list()
 		for lbls in ["Address","Information"]:
 			label = Gtk.Label(lbls)
@@ -248,10 +247,18 @@ class TreeViewFilterWindow(Gtk.Window):
 		self.transactions_label_generate.set_size_request(100,-1)
 		self.transaction_liststore = Gtk.ListStore(str,str)
 		#self.transaction_liststore.append(["Save", Gtk.STOCK_CANCEL])	
-
 		
 		#creating the treeview, making it use the filter as a model, and adding the columns
 		self.transaction_list_generate = Gtk.TreeView.new_with_model(self.transaction_liststore)
+
+		def transactionDelete(tree, widget = None, path = None, column = None):
+			tree_selection = self.transaction_list_generate.get_selection()
+			(model, pathlist) = tree_selection.get_selected_rows()
+			for path in pathlist:
+				tree_iter = model.get_iter(path)
+				self.transaction_liststore.remove(tree_iter)				
+
+		self.transaction_list_generate.connect('row-activated',transactionDelete)
 		#self.treeview.set_height_request(100)
 		for i, column_title in enumerate(["Transactions"]):
 		    renderer = Gtk.CellRendererText()
@@ -260,10 +267,14 @@ class TreeViewFilterWindow(Gtk.Window):
 		    self.transaction_list_generate.append_column(column)
 		
 		renderer_pixbuf = Gtk.CellRendererPixbuf()
-		column_pixbuf = Gtk.TreeViewColumn("Image", renderer_pixbuf, stock_id=1)
+		column_pixbuf = Gtk.TreeViewColumn("", renderer_pixbuf, stock_id=1)
        		self.transaction_list_generate.append_column(column_pixbuf)
-		
-		self.transactions_generate.pack_start(self.transaction_list_generate, True, True, 0)
+
+		self.sTransaction_list_generate = Gtk.ScrolledWindow()
+		self.sTransaction_list_generate.set_vexpand(True)
+		self.sTransaction_list_generate.add(self.transaction_list_generate)
+
+		self.transactions_generate.pack_start(self.sTransaction_list_generate, True, True, 0)
 	
 		self.values_generate = Gtk.Box(homogeneous=False,spacing = 6)	
 		self.values_generate.set_size_request(400,200)
@@ -283,11 +294,14 @@ class TreeViewFilterWindow(Gtk.Window):
 		    self.values_list_generate.append_column(column)
 
 		renderer_pixbuf = Gtk.CellRendererPixbuf()
-		column_pixbuf1 = Gtk.TreeViewColumn("Image", renderer_pixbuf, stock_id=3)
+		column_pixbuf1 = Gtk.TreeViewColumn(" ", renderer_pixbuf, stock_id=3)
        		self.values_list_generate.append_column(column_pixbuf1)    
-		self.values_generate.pack_start(self.values_list_generate, True, True, 0)
 	
-		
+		self.sValues_list_generate = Gtk.ScrolledWindow()
+		self.sValues_list_generate.set_vexpand(True)
+		self.sValues_list_generate.add(self.values_list_generate)
+		self.values_generate.pack_start(self.sValues_list_generate, True, True, 0)
+
 		self.run_generate = Gtk.Box(spacing = 6)
 		self.run_entry_generate = Gtk.Entry()
 		self.run_entry_generate.set_text("Information")
@@ -319,8 +333,7 @@ class TreeViewFilterWindow(Gtk.Window):
 		self.page3.set_border_width(10)
 		self.main_layer.append_page(self.page3, Gtk.Label('Verify Transaction'))
 
-
-		#self.addressRequest(author)
+		self.addressRequest(author)
 		self.show_all()
 
 	def language_filter_func(self, model, iter, data):
@@ -333,11 +346,26 @@ class TreeViewFilterWindow(Gtk.Window):
 	def addToTransactionList(self, element):
 		self.software_liststore.append(list(element))
 
+	def ConstructOwnTransactions(self, transactionList):
+		lst = list()
+		parsedTransactions = transactionList["txs"]
+		for i in range(len(parsedTransactions)):
+			outputs = parsedTransactions[i]["out"]
+			for j in outputs:
+				if j["addr"] == author:
+					lst.append(transactionList["txs"][i]["hash"])
+		return lst			
+
 	def ConstructAddresses(self, transactionList):
 		lst = list()
 		parsedTransactions = transactionList["txs"] #list
+		own = self.ConstructOwnTransactions(transactionList)
 		for i in range (len(parsedTransactions)):
-			lst.append((i, transactionList["txs"][i]["hash"]))
+			hash_tr = transactionList["txs"][i]["hash"]
+			if hash_tr in own:
+				lst.append((i, transactionList["txs"][i]["hash"],'arial bold 12'))
+			else:
+				lst.append((i, transactionList["txs"][i]["hash"],'arial 12'))	
 		self.software_liststore.clear()
 		for i in lst:
 			self.addToTransactionList(i)
@@ -362,7 +390,6 @@ class TreeViewFilterWindow(Gtk.Window):
 		else:
 			self.addressRequest(self.address.get_text())
 		
-
 	def on_selection_button_clicked(self, widget):
 		"""Called on any of the button clicks"""
 		#we set the current language filter to the button's label
